@@ -29,23 +29,6 @@ class GroupConsumer(AsyncWebsocketConsumer):
 
 #example query_string: "token=abcd1234&room_name=general"
 
-        #token_AndSplit = ['token=abcd1234', 'room_name=general']
-        # token_AndSplit = query_string.split("&")
-        # token = None 
-
-        
-        # #extract the token
-        # for item in token_AndSplit:
-        #     if item.startswith("token="):
-        #         token_EqualSplit = item.split("=")
-        #         #extract the token
-        #         token = token_EqualSplit[1]
-        #         print(token)
-        #         break
-
-        # print("this is token")
-        # print(token)
-
         query_params = parse_qs(query_string)
         # query_params will be:
         # {

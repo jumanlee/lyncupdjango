@@ -7,7 +7,7 @@ from channels.routing import ProtocolTypeRouter, URLRouter
 
 #this is the first point of contact as this is in the asgi file, which routes to the consumer
 websocket_urlpatterns = [
-    re_path(r'ws/(?P<groupname>\w+)/$', consumers.GroupConsumer.as_asgi())
+    re_path(r'ws/chat/(?P<groupname>\w+)/$', consumers.GroupConsumer.as_asgi())
 ]
 
 #this is necessary as we have JWT token in the consumers connect method, what this does is it routes WebSocket connections without additional middleware for authentication.

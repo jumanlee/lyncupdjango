@@ -43,19 +43,17 @@ INSTALLED_APPS = [
     'django.contrib.messages',
 
 
-
     'django.contrib.staticfiles',
 
     #dependencies
-    
     'channels',
     'rest_framework',
     'corsheaders',
 
-
     #apps
     'users',
     'chat',
+    'matching',
 
 
 ]
@@ -107,6 +105,9 @@ MIDDLEWARE = [
 ROOT_URLCONF = 'lyncup.urls'
 
 REDIS_URL = "redis://localhost:6379"
+
+#Celery settings
+CELERY_BROKER_URL = 'redis://localhost:6379/0'
 
 
 TEMPLATES = [
@@ -247,3 +248,6 @@ SIMPLE_JWT = {
     "SLIDING_TOKEN_OBTAIN_SERIALIZER": "rest_framework_simplejwt.serializers.TokenObtainSlidingSerializer",
     "SLIDING_TOKEN_REFRESH_SERIALIZER": "rest_framework_simplejwt.serializers.TokenRefreshSlidingSerializer",
 }
+
+# Celery settings
+CELERY_BROKER_URL = 'redis://localhost:6379/0'
