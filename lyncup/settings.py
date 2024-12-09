@@ -66,8 +66,9 @@ CHANNEL_LAYERS = {
     'default': {
         'BACKEND': 'channels_redis.core.RedisChannelLayer',
         'CONFIG': {
-            # 'hosts': [('127.0.0.1', 6379)]
-            'hosts': [('localhost', 6379)]
+            'hosts': [('127.0.0.1', 6379)]
+            # 'hosts': [('localhost', 6379)]
+
 
         },
 
@@ -104,10 +105,15 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = 'lyncup.urls'
 
-REDIS_URL = "redis://localhost:6379"
+REDIS_URL = "redis://127.0.0.1:6379"
 
 #Celery settings
-CELERY_BROKER_URL = 'redis://localhost:6379/0'
+CELERY_BROKER_URL = 'redis://127.0.0.1:6379/0'
+
+
+
+
+
 
 
 TEMPLATES = [
@@ -133,10 +139,10 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'lyncup.wsgi.application'
 #mine
-ASGI_APPLICATION = 'lyncup.routing.application'
+# ASGI_APPLICATION = 'lyncup.routing.application'
 
 #documentation
-# ASGI_APPLICATION = 'lyncup.asgi:application'
+ASGI_APPLICATION = 'lyncup.asgi:application'
 
 
 # Database
@@ -249,5 +255,4 @@ SIMPLE_JWT = {
     "SLIDING_TOKEN_REFRESH_SERIALIZER": "rest_framework_simplejwt.serializers.TokenRefreshSlidingSerializer",
 }
 
-# Celery settings
-CELERY_BROKER_URL = 'redis://localhost:6379/0'
+

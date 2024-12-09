@@ -7,7 +7,8 @@ from users.models import AppUser
 import redis
 from django.conf import settings
 
-
+#@shared_task decorator does not make the task available in all modules of project. 
+#it only registers the task with Celery's task registry.
 @shared_task
 def run_matching_algo():
 
