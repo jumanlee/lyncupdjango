@@ -6,6 +6,9 @@ from channels.layers import get_channel_layer
 from users.models import AppUser
 import redis
 from django.conf import settings
+import logging
+
+logger = logging.getLogger(__name__)
 
 #@shared_task decorator does not make the task available in all modules of project. 
 #it only registers the task with Celery's task registry.
@@ -38,6 +41,13 @@ def run_matching_algo():
 
     users = AppUser.objects.filter(id__in=user_ids)
 
+    print("users.count() before conditon < 2")
+
+    if users.count() < 2:
+        return
+
+    logger.info("users.count()")
+    logger.info(users.count())
     # matched_groups = [
     #     {"chatroom_id": 123, "user_ids": [1, 2, 3, 4]},
     #     {"chatroom_id": 124, "user_ids": [5, 6, 7, 8]},

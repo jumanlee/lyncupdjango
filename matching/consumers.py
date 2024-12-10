@@ -76,6 +76,8 @@ class QueueConsumer(AsyncWebsocketConsumer):
             await self.close(code=4123)
             return
 
+        print("run_matching_algo.delay()")    
+
         run_matching_algo.delay()
 
 

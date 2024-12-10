@@ -151,10 +151,40 @@ class GroupConsumer(AsyncWebsocketConsumer):
                         self.scope["lastname"]
                     ]))
 
-            #check what's left in Redis
-            membersSet = await self.redis.smembers(self.groupname)
-            print("whats left in Redis:")
-            print(membersSet)
+
+
+            try:
+                #check what's left in Redis
+                membersSet = await self.redis.smembers(self.groupname)
+                print("whats left in Redis:")
+                print(membersSet)
+                #convert back to json object from the returned Set
+                decoded_members = [json.loads(member) for member in membersSet]
+                #format is: [[1, "Mary", "HadALittleLamb"], [2, "Jane", "Monster"], ...]
+            except Exception as error:
+                print(error)
+                membersSet = set() #default to empty set
+
+
+        # decoded_members = [member.decode('utf-8') for member in membersByteString]
+
+
+            try:
+                await self.channel_layer.group_send(
+                    self.groupname,
+                    {
+                        #type key in this dictionary specifies the name of the method that Django Channels should call when this event is received by a consumer in the group. The type method takes in "event" as parameter.
+                        'type': 'handle_members',
+                        'members': decoded_members,
+                    }
+                )
+                
+            except Exception as error:
+                print("error in send")
+                print(error)
+
+
+
 
             #if no one is left in the group, we must delete the groupname from Redis user tracking
             if not membersSet:
