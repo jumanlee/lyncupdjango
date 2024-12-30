@@ -55,7 +55,7 @@ def run_matching_algo():
     # ]
 
     #just some dummy thing, i'm not concerned about the matching algo for now, just will input dummy data
-    matched_groups = [{"room_id": 123, "user_ids": [1, 2]}]
+    matched_groups = [{"room_id": 123, "user_ids": [3, 4]}]
 
     #get the channel layer
     channel_layer = get_channel_layer()
