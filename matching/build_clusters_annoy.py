@@ -51,7 +51,7 @@ def create_similarity_matrix(likes_df, reciprocal_weight=0.5):
             data.append(row['like_count']* reciprocal_weight)
     
     #create sparse like matrix
-    #social graphs can be extremely sparse, most users don’t “like” most others, it’s more memory efficient to build a sparse matrix. Returning a sparse matrix is better idea to avoid big memory spikes. Better to build sparse, then convert to dense only when needed for Annoy.
+    #social graphs can be extremely sparse, most users don’t “like” most others, it’s more memory efficient to build a sparse matrix. Returning a sparse matrix is better idea to avoid big memory spikes. Better to build sparse, then convert to dense only when needed for Annoy. More importantly, this allows me to only build dense matrix, which is huge in memory, only for the cluster that I am working on. This keeps eadch cluster's memory usage low.
     like_matrix_sparse = csr_matrix((data, (row_indices, col_indices)), shape=(len(user_list), len(user_list)))
     return user_index_map, like_matrix_sparse
 
@@ -122,12 +122,12 @@ def create_clusters_and_annoy(likes_df, n_clusters=5, base_dir=None):
         sub_like_matrix_dense = sub_like_matrix_sparse.toarray()
 
         #.shape returns (number of rows, number of columns)
-        sub_num_users, dimension_size = sub_like_matrix_dense.shape
+        sub_num_users, feature_size = sub_like_matrix_dense.shape
 
-        if sub_num_users < 1 or dimension_size < 1:
+        if sub_num_users < 1 or feature_size < 1:
             continue
         
-        annoy_index = AnnoyIndex(dimension_size, 'angular')
+        annoy_index = AnnoyIndex(feature_size, 'angular')
 
         for row_i in range(sub_num_users):
             annoy_index.add_item(row_i, sub_like_matrix_dense[row_i])
@@ -143,7 +143,7 @@ def create_clusters_and_annoy(likes_df, n_clusters=5, base_dir=None):
         map_info = {
             "user_index_map": sub_user_index_map,
             "index_user_map": rev_map,
-            "dimension_size": dimension_size
+            "feature_size": feature_size
         }
 
         with open(f"{base_dir}/cluster_{cluster_id}_map.json", "w") as f:
