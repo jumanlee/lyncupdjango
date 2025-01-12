@@ -63,10 +63,23 @@ def match_in_cluster(cluster_id, queue_manager, base_dir=None, batch_size=50, to
             matched_entries.extend(found_cluster_users)
 
             #if still fail to find from cluster and no matches at all are found, then push all leftover users to global queue for cross cluster matching with other leftovers
-            if len(matched_entries) < 3:
+            if len(matched_entries) < 1:
                 #push all leftover users to global queue
                 queue_manager.enqueue("global", user_id, user_entry.priority)
                 for entry in matched_entries:
+                    queue_manager.enqueue("global", entry.user_id, entry.priority)
+                continue
+            #still need to handle the case where we have some leftover users
+            
+            #we then form up to group of 4
+            group = []
+            group.append(user_entry)
+            for entry in matched_entries:
+                group.append(entry)
+            groups_formed.append(group)
+
+    return groups_formed
+
 
                 
 
