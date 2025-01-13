@@ -1,19 +1,22 @@
-import heapq
 import time
 
 class UserEntry:
-    def __init__(self, user_id, priority=1.0):
+    def __init__(self, user_id):
         self.user_id = user_id
 
-        self.priority = priority
         self.joined_at = time.time()
+
+    #define __eq__ and __hash__ to compare UserEntry objects by user_id, rather than requiring the same object reference (memory address).
+
+    #__eq__ used to define how two objects of the UserEntry class are considered equal. It ensures logical equality based on the user_id attribute
+    def __eq__(self, other):
+        return isinstance(other, UserEntry) and self.user_id == other.user_id
+    #making sure the unique identifier hash
+    def __hash__(self):
+        return hash(self.user_id)
     
-    #need to define how heapq compares, by default it will compare based on minheap, and because we need maxheap, we will reverse the lt (less than) comparison. This is standard practice in python heapq.
-    def __ lt__(self, other):
-        if self.priority == other.priority:
-        #compare by joined_at if priorities are the same
-            return self.joined_at < other.joined_at
-        return self.priority > other.priority
+    
+
 
 #this one will create a separate priority queue for each cluster. 
 #we will push UserEntry objects into it and pop them based on priority.
@@ -22,24 +25,39 @@ class ClusterQueueManager:
         #the cluster id maps to the respective priority queue, implemented in list form.
         self.cluster_queues = {}
 
-    def enqueue(self, cluster_id, user_id, priority=1.0):
+    def add(self, cluster_id, user_id):
         if cluster_id not in self.cluster_queues:
-            self.cluster_queues[cluster_id] = []
-        user_entry = UserEntry(user_id, priority)
-        heapq.heappush(self.cluster_queues[cluster_id], user_entry)
+            self.cluster_queues[cluster_id] = set()
+        user_entry = UserEntry(user_id)
+        self.cluster_queues[cluster_id].add(user_entry)
+    
+    def get_remove(self, cluster_id, user_id):
+        if cluster_id not in self.cluster_queues:
+            print(f"cluster {cluster_id} not found.")
+            return False
+        #even if don’t know the joined_at date, can still create a new UserEntry object with the same user_id to remove it from the set. This is cuz of overriden hash.
+        user_entry = UserEntry(user_id)
+        if user_entry in self.cluster_queues[cluster_id]:
+            self.cluster_queues[cluster_id].remove(user_entry)
+            return user_entry
+        else:   
+            print(f"user {user_id} not found in cluster {cluster_id}")
+            return False
 
-    def pop(self, cluster_id):
-        if cluster_id not in self.cluster_queues or not self.cluster_queues:
+
+    
+
+    def pop_random(self, cluster_id):
+        if cluster_id not in self.cluster_queues or not self.cluster_queues[cluster_id]:
+            print(f"Cluster {cluster_id} is empty or does not exist.")
             return None
-        #this pops the user at the tip of the heap
-        return heapq.heappop(self.cluster_queues[cluster_id])
+        return self.cluster_queues[cluster_id].pop()
 
-    def requeue(self, cluster_id, user_entry, boost=0.5):
-        user_entry.priority += boost
-        heapq.heappush(self.queues[cluster_id], user_entry)
 
     def get_cluster_size(self, cluster_id):
-        return len(self.cluster_queues[cluster_id], [])
+        if cluster_id not in self.cluster_queues:
+            return None
+        return len(self.cluster_queues[cluster_id])
 
     def get_all_clusters(self):
         return list(self.cluster_queues.keys())

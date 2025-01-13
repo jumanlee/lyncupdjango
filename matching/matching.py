@@ -1,8 +1,8 @@
 import json
 from annoy import AnnoyIndex
-import numpy as np
 
-#this function will load the cluster_{id}.ann and cluster_{id}_map.json files and pop up to batch_size users from the queue to form groups of 4 with greedy algo. Users who are leftovers (can't form a group) will be placed in a cluster queue, if still unmatched, will be placed in the global leftover queue. The batch_num represents the number to pop from this cluster’s queue.
+
+#this function will load the cluster_{id}.ann and cluster_{id}_map.json files and pop up to batch_size users from the queue to form groups of 4 with greedy algo. Users who are leftovers (can't form a group) will be placed in a cluster queue, if still unmatched, will be placed in the global leftover queue. The batch_size represents the number to pop from this cluster’s queue.
 def match_in_cluster(cluster_id, queue_manager, base_dir=None, batch_size=50, top_k=10):
     if base_dir is None:
         base_dir = os.path.join(os.path.dirname(__file__), "Annoy")
@@ -19,7 +19,7 @@ def match_in_cluster(cluster_id, queue_manager, base_dir=None, batch_size=50, to
         annoy_index.load(cluster_file)
 
     except FileNotFoundError:
-        print(f"cluster {cluster_id} not found.")
+        print(f"Cluster {cluster_id} not found or Annoy files missing.")
         return []
     
     groups_formed = []
@@ -27,7 +27,7 @@ def match_in_cluster(cluster_id, queue_manager, base_dir=None, batch_size=50, to
     #tracker for the number of users processed
     processed = 0
 
-    while queue_manager(cluster_id) >= 4 and processed < batch_size:
+    while queue_manager.get_cluster_size(cluster_id) > 0 and processed < batch_size:
         user_entry = queue_manager.pop(cluster_id)
         if not user_entry:
             break
@@ -46,32 +46,37 @@ def match_in_cluster(cluster_id, queue_manager, base_dir=None, batch_size=50, to
         matched_entries = []
         while len(matched_entries) < 3 and neigh_indices:
             neigh_index = neigh_indices.pop(0)
-            if index == user_index:
+            if neigh_index == user_index:
                 continue
             #get the neighbour id
             neigh_id = int(index_user_map[int(neigh_index)])
 
             #get and pop this specific neighbour from the queue
-            neigh_entry = pop_specific_user(queue_manager, cluster_id, neigh_id)
+            neigh_entry = queue_manager.get_remove(cluster_id, neigh_id)
             if neigh_entry:
                 matched_entries.append(neigh_entry)
 
         #if we can't find 3 neighbours from Annoy queue, then try to pick from other possible users from the same cluster, if any available.
         if len(matched_entries) < 3:
             num_leftover_users = 3 - len(matched_entries)
-            found_cluster_users = random_cluster_pick(queue_manager, cluster_id)
-            matched_entries.extend(found_cluster_users)
+            while num_leftover_users > 0:
+                leftover_entry = queue_manager.pop_random(cluster_id)
+                if not leftover_entry:
+                    break
+                matched_entries.append(leftover_entry)
+                num_leftover_users -= 1
 
-            #if still fail to find from cluster and no matches at all are found, then push all leftover users to global queue for cross cluster matching with other leftovers
-            if len(matched_entries) < 1:
+            #if still fail to find from cluster and no matches at all are found or only 1 other match is found (too few), then push the user and the other matched user to the global queue for further matching. We allow matching of total 3 to 4 people.
+            if len(matched_entries) < 2:
                 #push all leftover users to global queue
-                queue_manager.enqueue("global", user_id, user_entry.priority)
+                queue_manager.add("global", user_id)
                 for entry in matched_entries:
-                    queue_manager.enqueue("global", entry.user_id, entry.priority)
-                continue
-            #still need to handle the case where we have some leftover users
+                    queue_manager.add("global", entry.user_id)
+                
+                    continue
+
             
-            #we then form up to group of 4
+            #we then form up to group of up to 4
             group = []
             group.append(user_entry)
             for entry in matched_entries:
