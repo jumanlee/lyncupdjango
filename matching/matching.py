@@ -87,6 +87,22 @@ def match_in_cluster(cluster_id, queue_manager, base_dir=None, batch_size=50, to
 
 
                 
+def run_batch_matching(queue_manager, base_dir=None, batch_size=50):
+
+    res = {}
+    clusters = queue_manager.get_all_clusters()
+    for cluster_id in clusters:
+        #skip tghlobal cluster and match the global only after the others are matched
+        if cluster_id == "global":
+            continue
+        groups = match_in_cluster(cluster_id, queue_manager, base_dir, batch_size)
+        res[cluster_id] = groups
+
+    #match the global cluster
+    groups = match_in_cluster("global", queue_manager, base_dir, batch_size)
+    res["global"] = groups
+
+
 
             
 
