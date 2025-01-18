@@ -143,3 +143,6 @@ dump.rdb
 
 #ignore csv
 *.csv
+
+#ignore all Annoy files
+matching/Annoy/*
