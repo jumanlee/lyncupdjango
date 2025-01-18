@@ -3,6 +3,7 @@ import json
 from annoy import AnnoyIndex
 from scipy.sparse import csr_matrix
 from sklearn.cluster import KMeans
+import os
 
 #this set of algos are for pre-computing annoy index for each K-means cluster so that we don't have to calculate top-k neighbours in real time
 
@@ -13,13 +14,14 @@ def create_similarity_matrix(likes_df, reciprocal_weight=0.5):
         return {}, csr_matrix((0,0))
 
     #get unique users and create a mapping to indices
-    user_list = likes_df['user_from'].unique()
+    # user_list = likes_df['user_from'].unique()
+    user_list = pd.concat([likes_df['user_from'], likes_df['user_to']]).unique()
     #sort based on numerical order. remember, this is user IDs
     user_list = sorted(user_list)
     #creating user_index_map for easy and quick retrieval of index number of users. even when the user id is integer, we would still need a mapping. This is cuz they can be  large or sparse as a matrix requires 0-based row/column indices. Mapping the userI to smaller indices here is more practical.
     user_index_map = {}
     for i in range(len(user_list)):
-        user_index_map[user_list[i]] = i
+        user_index_map[int(user_list[i])] = int(i)
 
  
 
@@ -30,6 +32,7 @@ def create_similarity_matrix(likes_df, reciprocal_weight=0.5):
 
     #pre-compute reciprocal pairs in the first loop check (second loop check is below)
     reciprocal_pairs = set()
+    #using iterrows() is inefficient for large DataFrames, consider changing.
     for i, row in likes_df.iterrows():
         reciprocal_pairs.add((row['user_from'], row['user_to']))
 
@@ -51,9 +54,11 @@ def create_similarity_matrix(likes_df, reciprocal_weight=0.5):
             data.append(row['like_count']* reciprocal_weight)
     
     #create sparse like matrix
-    #social graphs can be extremely sparse, most users don’t “like” most others, it’s more memory efficient to build a sparse matrix. Returning a sparse matrix is better idea to avoid big memory spikes. Better to build sparse, then convert to dense only when needed for Annoy. More importantly, this allows me to only build dense matrix, which is huge in memory, only for the cluster that I am working on. This keeps eadch cluster's memory usage low.
+    #social graphs can be extremely sparse, most users don’t “like” most others, it’s more memory efficient to build a sparse matrix. Returning a sparse matrix is better idea to avoid big exponential memory spikes. Better to build sparse, then convert to dense only when needed for Annoy. More importantly, this allows me to only build dense matrix, which is huge in memory, only for the cluster that I am working on. This keeps eadch cluster's memory usage low.
     like_matrix_sparse = csr_matrix((data, (row_indices, col_indices)), shape=(len(user_list), len(user_list)))
     return user_index_map, like_matrix_sparse
+
+    print("create_similarity_matrix done")
 
 #this will use the create_similarity_matrix above to convert likes_df and then build a user to user matrix from likes_df. Then it will cluster users to segment them into smaller groups. Then, for each cluster, it will build an annoy index. Then it will save the annoy index along with the user_id mappings to a file.
 def create_clusters_and_annoy(likes_df, n_clusters=5, base_dir=None):
@@ -63,6 +68,8 @@ def create_clusters_and_annoy(likes_df, n_clusters=5, base_dir=None):
     #like_matrix_sparse will be converted to dense
     user_index_map, like_matrix_sparse = create_similarity_matrix(likes_df)
 
+    #convert to dense matrix
+    dense_matrix = like_matrix_sparse.toarray()
     #get number of rows from dense_matrix
     num_users = dense_matrix.shape[0]
 
@@ -91,7 +98,7 @@ def create_clusters_and_annoy(likes_df, n_clusters=5, base_dir=None):
 
     #create reverse map
     #IMPORTANT: we needed the user_index_map to build the sparse matrix but we need index_user_map to build the clusters and annoy index. This is because the annoy index is built on the user index, not the user id. When building an annoy index, you provide numerical indices (like 0, 1, 2) for each vector. These indices correspond to positions in the annoy index, not the real world user IDs.
-    index_user_map = {value: key for key, value in user_index_map.items()}
+    index_user_map = {int(value): int(key) for key, value in user_index_map.items()}
 
     #create clusters for users
     clusters = {}
@@ -107,6 +114,9 @@ def create_clusters_and_annoy(likes_df, n_clusters=5, base_dir=None):
         user_ids = clusters[cluster_id]
 
         #filter likes_df to keep only rows where both 'user_from' and 'user_to' are in the cluster
+        #why use AND and not OR in if row['user_from'] in user_ids and row['user_to'] in user_ids:
+        #first, keep in mind why we are breaking data into clusters in the first place:
+        #k-means uses the full NxN user-user matrix of all likes to assign each user to a cluster. This clustering step already captures global relationships, like A and B both liking C, even if C is in a different cluster. However, once the clusters are finalised, I want to build a local Annoy index for each cluster that only includes users and interactions within that cluster. If I include edges where 'user_from' is inside the cluster but 'user_to' is outside (using "or"),the cluster-specific index would no longer represent a clean sub-graph of the cluster. Instead, it would include partial edges referencing users in other clusters, which defeats the purpose of having neat, self-contained sub-graphs. By restricting to 'user_from IN cluster AND user_to IN cluster', I ensure the resulting sub-matrix is a clean NxN block for the cluster. This makes the Annoy index memory-efficient and ensures that nearest-neighbor searches are focused solely on users within the cluster. In other words, the local step is to sieve out the interactions FURTHER, if there is any. K-means already does the similarity grouping step globally. By sieving out further locally, this allows a smaller Annoy index and dense matrix to be built.
         sub_likes = []
         for i, row in likes_df.iterrows():
             if row['user_from'] in user_ids and row['user_to'] in user_ids:
@@ -116,6 +126,7 @@ def create_clusters_and_annoy(likes_df, n_clusters=5, base_dir=None):
         sub_likes = pd.DataFrame(sub_likes)
 
         if sub_likes.empty:
+            print(f"cluster {cluster_id} has no valid user interactions.. skipping.")
             continue
 
         sub_user_index_map, sub_like_matrix_sparse = create_similarity_matrix(sub_likes)
@@ -150,18 +161,18 @@ def create_clusters_and_annoy(likes_df, n_clusters=5, base_dir=None):
             json.dump(map_info, f)
 
 
-        #also save the user to cluster assignment mapping
-        #e.g. cluster_labels = [0, 1, 0]  #cluster ids for indices 0, 1, and 2
+    #also save the user to cluster assignment mapping
+    #e.g. cluster_labels = [0, 1, 0]  #cluster ids for indices 0, 1, and 2
 
-        user_clusters = {}
-        for i in range(num_users):
-            user_id = index_user_map[i]
-            user_clusters[user_id] = int(cluster_labels[i])
+    user_clusters = {}
+    for i in range(num_users):
+        user_id = index_user_map[i]
+        user_clusters[user_id] = int(cluster_labels[i])
 
-        with open(f"{base_dir}/user_clusters.json", "w") as f:
-            json.dump(user_clusters, f)
+    with open(f"{base_dir}/user_clusters.json", "w") as f:
+        json.dump(user_clusters, f)
         
-        print(f"built {len(clusters)} cluster indexes in {base_dir}.")
+    print(f"built {len(clusters)} cluster indexes in {base_dir}.")
 
         
         

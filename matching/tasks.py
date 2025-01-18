@@ -7,18 +7,47 @@ from users.models import AppUser
 import redis
 from django.conf import settings
 import logging
+import pandas as pd
+import os
+
+
+#import all the necessary functions for the matching algo
+from matching.matching import match_in_cluster, run_batch_matching
+from matching.queue_manager import ClusterQueueManager, UserEntry
+from matching.build_clusters_annoy import create_similarity_matrix, create_clusters_and_annoy
 
 logger = logging.getLogger(__name__)
 
 #@shared_task decorator does not make the task available in all modules of project. 
 #it only registers the task with Celery's task registry.
 @shared_task
+def build_clusters_annoy():
+        try:
+            # Get the directory of the current Python file
+            base_dir = os.path.dirname(os.path.abspath(__file__))
+            # Construct the full path to likes_df.csv
+            likes_df = os.path.join(base_dir, "likes_df.csv")
+            # Use the global CSV file path from settings
+            likes_df = pd.read_csv(likes_df)
+            # Process the DataFrame
+            print("CSV File Loaded Successfully")
+
+        except FileNotFoundError as e:
+            print(f"File not found: {e}")
+        except Exception as e:
+            print(f"Error loading CSV file: {e}")
+
+        # likes_df = likes_df.iloc[:int(len(likes_df) * 0.2)]
+
+        create_clusters_and_annoy(likes_df, 5, None)
+
+
+
+@shared_task
 def run_matching_algo():
 
     #connect to Redis
     redis_client = redis.from_url(settings.REDIS_URL, decode_responses=True)
-
-
 
     #get all user id's in queue in redis
     try:

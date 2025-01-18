@@ -33,7 +33,7 @@ ALLOWED_HOSTS = [ 'localhost','127.0.0.1',]
 
 # Application definition
 
-INSTALLED_APPS = [
+INSTALLED_APPS = [  
     
     "daphne",
     'django.contrib.admin',
@@ -49,11 +49,14 @@ INSTALLED_APPS = [
     'channels',
     'rest_framework',
     'corsheaders',
+    'django_celery_beat',
+    'django_celery_results',
 
     #apps
     'users',
     'chat',
     'matching',
+
 
 
 ]
@@ -93,6 +96,8 @@ REST_FRAMEWORK = {
 MIDDLEWARE = [
     #added by me
     'corsheaders.middleware.CorsMiddleware',
+    #to serve static files, mainly for django admin css
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -109,6 +114,10 @@ REDIS_URL = "redis://127.0.0.1:6379"
 
 #Celery settings
 CELERY_BROKER_URL = 'redis://127.0.0.1:6379/0'
+
+#added by me
+CELERY_RESULT_BACKEND = "django-db"
+CELERY_RESULT_EXTENDED = True
 
 
 
@@ -195,8 +204,8 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.1/howto/static-files/
 
-
-STATIC_URL = 'static/'
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+STATIC_URL = '/static/'
 
 #not needed as hosting React separately.
 # STATICFILES_DIRS = [
@@ -254,6 +263,8 @@ SIMPLE_JWT = {
     "SLIDING_TOKEN_OBTAIN_SERIALIZER": "rest_framework_simplejwt.serializers.TokenObtainSlidingSerializer",
     "SLIDING_TOKEN_REFRESH_SERIALIZER": "rest_framework_simplejwt.serializers.TokenRefreshSlidingSerializer",
 }
+
+
 
 
 # settings.py

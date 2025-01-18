@@ -140,3 +140,6 @@ GitHub.sublime-settings
 
 #Redis
 dump.rdb
+
+#ignore csv
+*.csv
