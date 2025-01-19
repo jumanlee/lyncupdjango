@@ -28,17 +28,18 @@ def match_in_cluster(cluster_id, queue_manager, base_dir=None, batch_size=50, to
     processed = 0
 
     while queue_manager.get_cluster_size(cluster_id) > 0 and processed < batch_size:
-        user_entry = queue_manager.pop(cluster_id)
+        user_entry = queue_manager.pop_random(cluster_id)
         if not user_entry:
             break
         processed += 1
         user_id = user_entry.user_id
 
         #try to get top-k from Annoy. if not in user_index map, then skip this user
-        if int(user_id) not in user_index_map:
+        #important: dumping map into JSON will alays turn the key into string, even though it was first saved as int! Therefore, to search in the user_index_map, we need to convert it to str!
+        if str(user_id) not in user_index_map:
             continue
 
-        user_index = user_index_map[int(user_id)]
+        user_index = user_index_map[str(user_id)]
 
         #when annoy is queried, the returned indices also include the queried item. So to mitigate that, have to to k+1 and exclude the first item. This returns a list.
         neigh_indices = annoy_index.get_nns_by_item(user_index, top_k+1)
@@ -49,7 +50,7 @@ def match_in_cluster(cluster_id, queue_manager, base_dir=None, batch_size=50, to
             if neigh_index == user_index:
                 continue
             #get the neighbour id
-            neigh_id = int(index_user_map[int(neigh_index)])
+            neigh_id = int(index_user_map[str(neigh_index)])
 
             #get and pop this specific neighbour from the queue
             neigh_entry = queue_manager.get_remove(cluster_id, neigh_id)
@@ -76,12 +77,12 @@ def match_in_cluster(cluster_id, queue_manager, base_dir=None, batch_size=50, to
                     continue
 
             
-            #we then form up to group of up to 4
-            group = []
-            group.append(user_entry)
-            for entry in matched_entries:
-                group.append(entry)
-            groups_formed.append(group)
+        #we then form up to group of up to 4
+        group = []
+        group.append(user_entry)
+        for entry in matched_entries:
+            group.append(entry)
+        groups_formed.append(group)
 
     return groups_formed
 
