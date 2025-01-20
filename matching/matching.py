@@ -82,7 +82,7 @@ def match_in_cluster(cluster_id, queue_manager, base_dir=None, batch_size=50, to
         group.append(user_entry)
         for entry in matched_entries:
             group.append(entry)
-        groups_formed.append(group)
+        groups_formed.extend(group)
 
     return groups_formed
 
@@ -99,9 +99,10 @@ def run_batch_matching(queue_manager, base_dir=None, batch_size=50):
         groups = match_in_cluster(cluster_id, queue_manager, base_dir, batch_size)
         res[cluster_id] = groups
 
-    #match the global cluster
+    #match the global cluster, this will be the leftovers failed to matched previously. That's why we're only matching now as we had to collect them.
     groups = match_in_cluster("global", queue_manager, base_dir, batch_size)
     res["global"] = groups
+    return res
 
 
 
