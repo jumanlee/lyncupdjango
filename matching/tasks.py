@@ -121,9 +121,11 @@ def run_matching_algo():
     
     #run the batch matching algo
     grouped_users = run_batch_matching(queue_manager)
+    print(grouped_users)
     #distribute grouped users to rooms
     matched_groups = distribute_rooms(grouped_users, redis_client)
-
+    
+    #remember when this is returned, it is a tuple as two values are returned!
     print(matched_groups)
     removed_ids = redis_client.smembers("rooms")
     print(removed_ids)

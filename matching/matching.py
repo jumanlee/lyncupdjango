@@ -83,7 +83,7 @@ def match_in_cluster(cluster_id, queue_manager, base_dir=None, batch_size=50, to
         group.append(user_entry)
         for entry in matched_entries:
             group.append(entry)
-        groups_formed.extend(group)
+        groups_formed.append(group)
 
     return groups_formed
 
