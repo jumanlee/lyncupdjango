@@ -49,9 +49,8 @@ class AppUser(AbstractBaseUser, PermissionsMixin):
     username = models.CharField(max_length=150, unique=True)
     firstname = models.CharField(max_length=150)
     lastname = models.CharField(max_length=150)
-    is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
-    is_online = models.BooleanField(default=False)
+    is_active = models.BooleanField(default=False)
 
     objects = AppUserManager()
 
@@ -121,9 +120,31 @@ class Profile(models.Model):
     ], 
     default='NA') 
 
-
     def __str__(self):
         return self.appuser.email
+
+# class Like(models.Model):
+#     user_from = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="user_from_like")
+#     user_to = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="user_to_like")
+#     like_count = models.IntegerField(default=1)
+#     last_like_date = models.DateTimeField(auto_now_add=True)
+
+#     class Meta:
+#         unique_together = ['user_from', 'user_to']
+
+
+#may need to link this to user email sufix, will figure out how to do later.
+# class Organisation(models.Model):
+#     name = models.CharField(max_length=100)
+#     description = models.TextField(blank=True, null=True)
+#     citytown = models.CharField(max_length=100, blank=True, null=True)
+#     country = models.CharField(max_length=100, blank=True, null=True)
+#     date_created = models.DateTimeField(auto_now_add=True)
+
+#     def __str__(self):
+#         return self.name
+
+
 
 
 #my code ends here

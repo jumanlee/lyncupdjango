@@ -125,6 +125,11 @@ class GetProfileSerializer(serializers.ModelSerializer):
         user_instance = AppUser.objects.filter(id=obj.appuser.id)
         return AppUserSerializer(user_instance, many=True).data
 
+# class LikeSerializer(serializers.ModelSerializer):
+#     class Meta:
+#         model = Like
+#         fields = ['user_from', 'user_to', 'like_count', 'last_like_date']
+
 #my code ends here
 
 

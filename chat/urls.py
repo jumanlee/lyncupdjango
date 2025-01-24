@@ -5,4 +5,7 @@ from . import views
 urlpatterns = [
 
     # path('<str:groupname>/', views.room, name='room'),
+
+    # #this is only for pytest purposes, as the websocket opening is dynamically handled from Queue.
+    # re_path(r"ws/queue/$", GroupConsumer.as_asgi()),
 ]
