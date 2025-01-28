@@ -44,7 +44,7 @@ class GroupConsumer(AsyncWebsocketConsumer):
 
                 if not user:
                     print("Invalid user")
-                    await self.aclose(code=4123)
+                    await self.close(code=4123)
                     return
 
                 
@@ -66,7 +66,7 @@ class GroupConsumer(AsyncWebsocketConsumer):
                 self.groupname = self.scope['url_route']['kwargs'].get('groupname')
                 if not self.groupname:
                     print("No group name provided")
-                    await self.aclose(code=4123)
+                    await self.close(code=4123)
                     return
 
                 #saved in Redis for user list tracking
@@ -92,11 +92,11 @@ class GroupConsumer(AsyncWebsocketConsumer):
 
             except Exception as error:
                 print(error)
-                await self.aclose(code=4123)
+                await self.close(code=4123)
 
         else:
             print("No token provided, closing connection")
-            await self.aclose(code=4123)
+            await self.close(code=4123)
             return
 
         #the list of members in this groupname from Redis
@@ -153,7 +153,6 @@ class GroupConsumer(AsyncWebsocketConsumer):
                     ]))
 
 
-
             try:
                 #check what's left in Redis
                 membersSet = await self.redis.smembers(self.groupname)
@@ -195,7 +194,7 @@ class GroupConsumer(AsyncWebsocketConsumer):
 
             #must close redis for this consumer instance
             if self.redis:
-                await self.redis.aclose()
+                await self.aclose()
 
         except Exception as error:
             print(error)

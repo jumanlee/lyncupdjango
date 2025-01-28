@@ -91,7 +91,7 @@ class QueueConsumer(AsyncWebsocketConsumer):
             )
 
 
-            if self.redis.exists(self.queue):
+            if await self.redis.exists(self.queue):
                 await self.redis.srem(self.queue, self.scope["user_id"])
 
             #check what's left in Redis
@@ -107,7 +107,7 @@ class QueueConsumer(AsyncWebsocketConsumer):
 
             #must close redis for this consumer instance
             if self.redis:
-                await self.redis.close()
+                await self.redis.aclose()
 
         except Exception as error:
             print(error)
