@@ -23,7 +23,7 @@ class UserEntry:
 class ClusterQueueManager:
     def __init__(self):
         #the cluster id maps to the respective priority queue, implemented in list form.
-        self.cluster_queues = {}
+        self.cluster_queues = {"global": set(), "leftover": set()}
 
     def add(self, cluster_id, user_id):
         if cluster_id not in self.cluster_queues:

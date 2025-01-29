@@ -4,19 +4,20 @@ import os
 
 
 #this function will load the cluster_{id}.ann and cluster_{id}_map.json files and pop up to batch_size users from the queue to form groups of 4 with greedy algo. Users who are leftovers (can't form a group) will be placed in a cluster queue, if still unmatched, will be placed in the global leftover queue. The batch_size represents the number to pop from this cluster’s queue.
-def match_in_cluster(cluster_id, queue_manager, base_dir=None, batch_size=50, top_k=10):
+#the batch size controls the max number of users that can be processed in one matching cycle
+def match_in_cluster(cluster_id, queue_manager, base_dir=None, batch_size=50, top_k=50):
     if base_dir is None:
         base_dir = os.path.join(os.path.dirname(__file__), "Annoy")
 
     try:
-        with open(f"{base_dir}/cluster_{cluster_id}_map.json", "r") as f:
+        with open(f"{base_dir}/{cluster_id}_map_info.json", "r") as f:
             map_data = json.load(f)
-        feature_size = map_data["feature_size"]
+        embed_dimensions = map_data["embed_dimensions"]
         user_index_map = map_data["user_index_map"]
         index_user_map = map_data["index_user_map"]
 
         cluster_file = f"{base_dir}/cluster_{cluster_id}.ann"
-        annoy_index = AnnoyIndex(feature_size, 'angular')
+        annoy_index = AnnoyIndex(embed_dimensions, 'angular')
         annoy_index.load(cluster_file)
 
     except FileNotFoundError:
@@ -58,24 +59,26 @@ def match_in_cluster(cluster_id, queue_manager, base_dir=None, batch_size=50, to
             if neigh_entry:
                 matched_entries.append(neigh_entry)
 
-        #if we can't find 3 neighbours from Annoy queue, then try to pick from other possible users from the same cluster, if any available.
-        if len(matched_entries) < 3:
-            num_leftover_users = 3 - len(matched_entries)
-            while num_leftover_users > 0:
-                leftover_entry = queue_manager.pop_random(cluster_id)
-                if not leftover_entry:
-                    break
-                matched_entries.append(leftover_entry)
-                num_leftover_users -= 1
+        #the following is only relevant if we start introducing more clusters, which we may do in the future
+        #Note: if this is used, remember to indent the if len(matched_entries) < 2: below, so that it is within this if len(matched_entries) < 3:
+        # #if we can't find 3 neighbours from Annoy queue, then try to pick from other possible users from the same cluster, if any available.
+        # if len(matched_entries) < 3:
+        #     num_leftover_users = 3 - len(matched_entries)
+        #     while num_leftover_users > 0:
+        #         leftover_entry = queue_manager.pop_random(cluster_id)
+        #         if not leftover_entry:
+        #             break
+        #         matched_entries.append(leftover_entry)
+        #         num_leftover_users -= 1
 
-            #if still fail to find from cluster and no matches at all are found or only 1 other match is found (too few), then push the user and the other matched user to the global queue for further matching. We allow matching of total 3 to 4 people.
-            if len(matched_entries) < 2:
-                #push all leftover users to global queue
-                queue_manager.add("global", user_id)
-                for entry in matched_entries:
-                    queue_manager.add("global", entry.user_id)
-                
-                    continue
+        #if still fail to find from cluster and no matches at all are found or only 1 other match is found (too few), then push the user and the other matched user to the leftover queue for further matching. We allow matching of total 3 to 4 people.
+        if len(matched_entries) < 2:
+            #push all leftover users to global queue
+            queue_manager.add("leftover", user_id)
+            for entry in matched_entries:
+                queue_manager.add("leftover", entry.user_id)
+            
+                continue
 
             
         #we then form up to group of up to 4
@@ -95,14 +98,14 @@ def run_batch_matching(queue_manager, base_dir=None, batch_size=50):
     clusters = queue_manager.get_all_clusters()
     for cluster_id in clusters:
         #skip tghlobal cluster and match the global only after the others are matched
-        if cluster_id == "global":
+        if cluster_id == "leftover":
             continue
         groups = match_in_cluster(cluster_id, queue_manager, base_dir, batch_size)
         res[cluster_id] = groups
 
-    #match the global cluster, this will be the leftovers failed to matched previously. That's why we're only matching now as we had to collect them.
-    groups = match_in_cluster("global", queue_manager, base_dir, batch_size)
-    res["global"] = groups
+    #match the leftover cluster, this will be the leftovers failed to matched previously. That's why we're only matching now as we had to collect them.
+    groups = match_in_cluster("leftover", queue_manager, base_dir, batch_size)
+    res["leftover"] = groups
     return res
 
 
