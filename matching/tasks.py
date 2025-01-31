@@ -41,10 +41,10 @@ def build_graph_annoy():
         except Exception as e:
             print(f"Error loading CSV files: {e}")
 
-        sample_df = likes_df.iloc[:int(len(likes_df) * 0.2)]
+        # sample_df = likes_df.iloc[:int(len(likes_df) * 0.2)]
 
         #use the default base_dir
-        create_node2vec_annoy(sample_df, embed_dimensions=128, num_trees=10)
+        create_node2vec_annoy(likes_df, embed_dimensions=128, num_trees=10)
 
 
         
@@ -86,7 +86,11 @@ def run_matching_algo():
 
 
     #dummy data for testing
-    user_ids = [1, 2, 3, 4, 5, 6, 7, 8, 10, 965, 993, 1884, 1934, 1977, 2104, 3782, 4391, 9, 23, 31, 48, 90, 108, 115, 120, 123]
+    user_ids = []
+    # user_ids = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20]
+    for i in range(1000):
+        user_ids.append(i)
+
 
     if len(user_ids) < 2:
         return
@@ -119,21 +123,22 @@ def run_matching_algo():
     #this automatically initialises "global" and "leftover" queues
     queue_manager = ClusterQueueManager()
 
-    # #below is only relevant if multiple clusters are used
-    # for user_id in user_ids:
-    #     queue_manager.add(user_clusters[str(user_id)], int(user_id))
+    for user_id in user_ids:
+        queue_manager.add("global", int(user_id))
 
     
     #run the batch matching algo
     grouped_users = run_batch_matching(queue_manager)
-    print(grouped_users)
+    print(f"grouped_users: {grouped_users}")
     #distribute grouped users to rooms
+
     matched_groups = distribute_rooms(grouped_users, redis_client)
 
+
     #remember when this is returned, it is a tuple as two values are returned!
-    print(matched_groups)
+    print(f"matched_groups: {matched_groups}")
     removed_ids = redis_client.smembers("rooms")
-    print(removed_ids)
+    print(f"removed_ids: {removed_ids}")
     if removed_ids:
         redis_client.srem("rooms", *removed_ids)
 

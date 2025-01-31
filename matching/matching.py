@@ -10,7 +10,7 @@ def match_in_cluster(cluster_id, queue_manager, base_dir=None, batch_size=50, to
         base_dir = os.path.join(os.path.dirname(__file__), "Annoy")
 
     try:
-        with open(f"{base_dir}/{cluster_id}_map_info.json", "r") as f:
+        with open(f"{base_dir}/{cluster_id}_map.json", "r") as f:
             map_data = json.load(f)
         embed_dimensions = map_data["embed_dimensions"]
         user_index_map = map_data["user_index_map"]
@@ -78,7 +78,7 @@ def match_in_cluster(cluster_id, queue_manager, base_dir=None, batch_size=50, to
             for entry in matched_entries:
                 queue_manager.add("leftover", entry.user_id)
             
-                continue
+            continue
 
             
         #we then form up to group of up to 4
@@ -104,8 +104,24 @@ def run_batch_matching(queue_manager, base_dir=None, batch_size=50):
         res[cluster_id] = groups
 
     #match the leftover cluster, this will be the leftovers failed to matched previously. That's why we're only matching now as we had to collect them.
-    groups = match_in_cluster("leftover", queue_manager, base_dir, batch_size)
-    res["leftover"] = groups
+    groups_formed = []
+    group = []
+    i = 0
+    print(f"this is left over queue: {queue_manager.cluster_queues["leftover"]}")
+    while queue_manager.cluster_queues["leftover"]:
+        user_entry = queue_manager.pop_random("leftover")
+        group.append(user_entry)
+        # queue_manager.get_remove("leftover", user_entry.user_id)
+        if i == 3:
+            groups_formed.append(group)
+            group = []
+            i = 0
+            continue
+        i += 1
+
+
+    # groups = match_in_cluster("leftover", queue_manager, base_dir, batch_size)
+    res["leftover"] = groups_formed
     return res
 
 

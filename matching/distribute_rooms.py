@@ -20,8 +20,8 @@ def distribute_rooms(grouped_users: Dict[int, List['UserEntry']], redis_client
     #first let's handle non-global users
     #keep getting a room id not being used now
     for cluster_id, groups_in_cluster in grouped_users.items():
-        if cluster_id == "leftover":
-            continue
+        # if cluster_id == "leftover":
+        #     continue
 
         for group in groups_in_cluster:
             #temporary solution, may change to more efficient sequential method for id allocation
