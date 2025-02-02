@@ -156,3 +156,6 @@ Annoy/
 #ignore static files only on the project root level. hence using both /
 /staticfiles/
 
+#ignore DS_store, no relevance to the project, only for MacOS system files
+.DS_Store
+
