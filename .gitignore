@@ -147,5 +147,12 @@ dump.rdb
 #ignore all Annoy files
 matching/Annoy/*
 
+#ignore any .ann file anywhere in the project
+*.ann
+
+#ignore all folders named "Annoy" anywhere in the project
+Annoy/
+
 #ignore static files only on the project root level. hence using both /
 /staticfiles/
+
