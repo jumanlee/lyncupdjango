@@ -13,7 +13,6 @@ from channels.db import database_sync_to_async
 
 
 #application is an ASGI applicatiomn that acts as the entry point for handling incoming socket requests.
-#if a request comes in for the WebSocket protocol, route it to this specific consumer. 
 #ProtocolTypeRouter is the special routing class provided by Django Channels.
 application = ProtocolTypeRouter(
     {
@@ -208,7 +207,7 @@ async def test_can_communicate_between_multiple_users():
 
 
     await communicator1.disconnect()
-    await communicator2.disconnect()
+    # await communicator2.disconnect()
 
 
 
