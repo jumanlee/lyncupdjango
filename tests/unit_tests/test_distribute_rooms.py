@@ -2,6 +2,8 @@ import pytest
 from unittest.mock import Mock
 from matching.distribute_rooms import distribute_rooms
 from matching.queue_manager import UserEntry
+from matching.build_graph_annoy import create_graph_from_likes, create_node2vec_annoy
+import pandas as pd
 
 @pytest.fixture
 # how to code mock redis: https://docs.python.org/3/library/unittest.mock.html
@@ -23,7 +25,8 @@ def test_redis():
     #{"123"} is only used inside distribute_rooms to check which room ids are already taken
     return test_redis
 
-def test_distribute_rooms_with_mock(test_redis):
+#test distribute rooms functionality with a mock redis and some small dummy data
+def test_distribute_rooms_with_mock_and_small_data(test_redis):
     user1 = UserEntry(1)
     user2 = UserEntry(2)
 
@@ -50,6 +53,8 @@ def test_distribute_rooms_with_mock(test_redis):
 
     assert test_redis.sadd.call_args[0][0] == "rooms"
     print(f"room id is: {test_redis.sadd.call_args[0][1]}")
+
+
 
 
     

@@ -1,11 +1,13 @@
 import json
 from annoy import AnnoyIndex
 import os
+from typing import Dict, Tuple, List
+from matching.queue_manager import UserEntry
 
 
 #this function will load the cluster_{id}.ann and cluster_{id}_map.json files and pop up to batch_size users from the queue to form groups of 4 with greedy algo. Users who are leftovers (can't form a group) will be placed in a cluster queue, if still unmatched, will be placed in the global leftover queue. The batch_size represents the number to pop from this cluster’s queue.
 #the batch size controls the max number of users that can be processed in one matching cycle
-def match_in_cluster(cluster_id, queue_manager, base_dir=None, batch_size=50, top_k=50):
+def match_in_cluster(cluster_id, queue_manager, base_dir=None, batch_size=50, top_k=50) -> List[List[UserEntry]]:
     if base_dir is None:
         base_dir = os.path.join(os.path.dirname(__file__), "Annoy")
 
@@ -92,7 +94,7 @@ def match_in_cluster(cluster_id, queue_manager, base_dir=None, batch_size=50, to
 
 
                 
-def run_batch_matching(queue_manager, base_dir=None, batch_size=50):
+def run_batch_matching(queue_manager, base_dir=None, batch_size=50) -> Dict[str, List[List[UserEntry]]]:
 
     res = {}
     clusters = queue_manager.get_all_clusters()

@@ -2,7 +2,7 @@ import random
 from typing import Dict, Tuple, List
 
 #function to distribute rooms to users
-def distribute_rooms(grouped_users: Dict[int, List['UserEntry']], redis_client
+def distribute_rooms(grouped_users: Dict[str, List['UserEntry']], redis_client
 ) -> Tuple[List[Dict[str, object]], List[int]]:
     # grouped_users in format of:
     # {2: [[<__main__.UserEntry object at 0x1781f3ce0>, <__main__.UserEntry object at 0x1781f3aa0>, <__main__.UserEntry object at 0x1781f3200>, <__main__.UserEntry object at 0x1781f3c20>]], 'global': []}
@@ -41,7 +41,7 @@ def distribute_rooms(grouped_users: Dict[int, List['UserEntry']], redis_client
 
             matched_groups.append(matched_group)
 
-    #need to handle global users still
+    #need to handle leftover users still
     # ...
 
     return matched_groups, users_in_matched_groups

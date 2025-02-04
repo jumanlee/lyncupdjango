@@ -35,9 +35,9 @@ def test_create_node2vec_annoy():
 
     likes_data = {
         #columns: 
-        "user_from": [1, 2, 3],
-        "user_to":   [2, 3, 1],
-        "like_count": [5, 10, 2]
+        "user_from": [1, 2, 3, 4],
+        "user_to":   [2, 3, 1, 3],
+        "like_count": [5, 10, 2, 5]
     }
 
     likes_df = pd.DataFrame(likes_data)
