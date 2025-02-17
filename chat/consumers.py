@@ -183,14 +183,9 @@ class GroupConsumer(AsyncWebsocketConsumer):
                 print("error in send")
                 print(error)
 
-
-
-
             #if no one is left in the group, we must delete the groupname from Redis user tracking
             if not membersSet:
                 await self.redis.delete(self.groupname)
-
-
 
             #must close redis for this consumer instance
             if self.redis:
@@ -256,7 +251,6 @@ class GroupConsumer(AsyncWebsocketConsumer):
         await self.send(text_data=json.dumps({
             'members': members
         }))
-
 
 
     #the decorator converts sychronouse function to asynchronous, more suitable for websocket.

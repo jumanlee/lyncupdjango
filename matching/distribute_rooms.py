@@ -7,7 +7,6 @@ def distribute_rooms(grouped_users: Dict[str, List['UserEntry']], redis_client
     # grouped_users in format of:
     # {2: [[<__main__.UserEntry object at 0x1781f3ce0>, <__main__.UserEntry object at 0x1781f3aa0>, <__main__.UserEntry object at 0x1781f3200>, <__main__.UserEntry object at 0x1781f3c20>]], 'global': []}
 
-
     matched_groups = []
     users_in_matched_groups = []
     #get the existing rooms being used now from Redis
@@ -17,7 +16,6 @@ def distribute_rooms(grouped_users: Dict[str, List['UserEntry']], redis_client
         print(error)
         roomsSet = set()
     
-    #first let's handle non-global users
     #keep getting a room id not being used now
     for cluster_id, groups_in_cluster in grouped_users.items():
         # if cluster_id == "leftover":

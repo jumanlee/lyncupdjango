@@ -121,7 +121,6 @@ def run_batch_matching(queue_manager, base_dir=None, batch_size=50) -> Dict[str,
             continue
         i += 1
 
-
     # groups = match_in_cluster("leftover", queue_manager, base_dir, batch_size)
     res["leftover"] = groups_formed
     return res

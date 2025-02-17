@@ -108,7 +108,7 @@ def test_run_batch_matching_with_big_data():
         assert len(group) >= 3
         assert len(group) <= 4
 
-    #check that the output is in the form of -> Dict[str, List[List[UserEntry]]] e.g. {global: [[userEntry, userEntry]], "leftover": [[userentry, userEntry]]}
+    #check that the output is in the form of -> Dict[str, List[List[UserEntry]]] e.g. {"global": [[userEntry, userEntry]], "leftover": [[userentry, userEntry]]}
 
     assert isinstance(res, dict), "res should be a dictionary"
 
@@ -160,7 +160,7 @@ def test_distribute_rooms_with_mock_and_small_data(test_redis):
     assert test_redis.sadd.call_args[0][0] == "rooms"
     print(f"room id is: {test_redis.sadd.call_args[0][1]}")
 
-#we are going to test with likes_df.csv, which contains 1 million like interactions among 10,000 users, we will stress test with a high user load in the queue.
+#here, we will stress test with a high user load in the queue and using the Annoy file created with 1 million user interactions by 10,000 users.
 def test_distribute_rooms_with_mock_and_big_data(test_redis):
     #get the annoy related files
     base_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "Annoy")

@@ -122,9 +122,6 @@ def create_node2vec_annoy(likes_df, base_dir=None, embed_dimensions=128, num_tre
         "embed_dimensions": int(embed_dimensions)
     }
 
-    # with open(os.path.join(base_dir, "global_map_info.json"), "w") as f:
-    #     json.dump(map_info, f)
-
     with open(f"{base_dir}/global_map.json", "w") as f:
             json.dump(map_info, f)
 

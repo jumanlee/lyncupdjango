@@ -15,10 +15,6 @@ class UserEntry:
     def __hash__(self):
         return hash(self.user_id)
     
-    
-
-
-#this one will create a separate priority queue for each cluster. 
 #we will push UserEntry objects into it and pop them based on priority.
 class ClusterQueueManager:
     def __init__(self):
@@ -44,15 +40,11 @@ class ClusterQueueManager:
             print(f"user {user_id} not found in cluster {cluster_id}")
             return False
 
-
-    
-
     def pop_random(self, cluster_id):
         if cluster_id not in self.cluster_queues or not self.cluster_queues[cluster_id]:
             print(f"Cluster {cluster_id} is empty or does not exist.")
             return None
         return self.cluster_queues[cluster_id].pop()
-
 
     def get_cluster_size(self, cluster_id):
         if cluster_id not in self.cluster_queues:

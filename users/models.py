@@ -1,7 +1,4 @@
 from django.db import models
-
-# Create your models here.
-from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, BaseUserManager
 from django.conf import settings
 
@@ -19,16 +16,12 @@ class AppUserManager(BaseUserManager):
 
         # is_staff is a built-in boolean attribute of the Django User model
         extra_fields.setdefault("is_staff", False)
-
         extra_fields.setdefault("is_superuser", False)
 
         # self.model refers to the user model that is being managed by the manager class. this model is the AppUser model below, which references objects = AppUserManager().
         appuser = self.model(email=email, username=username, firstname=firstname, lastname=lastname, **extra_fields)
-
         appuser.set_password(password)
-
         appuser.save()
-
         return appuser
 
     #code taken from Django's main project github (guide)'s instructions: https://github.com/django/django/blob/main/django/contrib/auth/models.py#L128 Basically BaseUserManager does not have any method called create_superuser, so its necessary to add this, otherwise would have error when doing python manage.py createsuperuser to create super user. Please see: https://stackoverflow.com/questions/54989276/user-manager-object-has-no-attribute-create-superuser
@@ -45,12 +38,16 @@ class AppUserManager(BaseUserManager):
 
 
 class AppUser(AbstractBaseUser, PermissionsMixin):
+    id = models.BigAutoField(primary_key=True)
     email = models.EmailField(max_length=255, unique=True)
     username = models.CharField(max_length=150, unique=True)
     firstname = models.CharField(max_length=150)
     lastname = models.CharField(max_length=150)
     is_staff = models.BooleanField(default=False)
-    is_active = models.BooleanField(default=False)
+    #is_active is built-in
+    is_active = models.BooleanField(default=True)
+    is_oneline = models.BooleanField(default=False)
+    organisation = models.ForeignKey("Organisation", on_delete=models.SET_NULL, null=True, blank=True, related_name="appusers")
 
     objects = AppUserManager()
 
@@ -67,19 +64,16 @@ class AppUser(AbstractBaseUser, PermissionsMixin):
     #this default get username allows you to get username, this is provided by default django
     #get_username()
 
-    #The __str__(self) and __unicode__(self) methods are special methods in Python that allow you to define how an object should be represented as a string. These methods are called implicitly when the object is used in a context that requires a string representation, such as when it is printed or concatenated with other strings.
-
-    #The get_full_name() method, on the other hand, is not a special method in Python. It is a method defined by Django's AbstractBaseUser model that is used to return a string representing the user's full name. However, since get_full_name() is not a special method, it will not be called implicitly when the object is used in a context that requires a string representation. Instead, you would need to call it explicitly (e.g. user.get_full_name()).
     def get_full_name(self):
         return f"{self.firstname} {self.lastname}"
 
 
 class Friendship(models.Model):
     #[self]one to one field cuz one appuser can only have one entry appuser. Note that one row/entry represents one "friend list" for the relevant appuser
-    appuser = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="appuser")
+    appuser = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="friendship")
 
-    #[self]appfriends links to all the appuser's friends, which are also in the AppUser class. A many-to-many relationship in Django is typically represented as a join table in the database. This join table has two foreign key columns that reference the two models involved in the relationship. In this case, the join table has two foreign key columns that reference the Friendship model and the AppUser model, respectively. When you add a AppUser instance to the appfriends field of a Friendship instance, Django automatically creates a new row in the join table that links the two instances. Similarly, when you remove a User instance from the appfriends field, Django removes the corresponding row from the join table. When you access the appfriends field of a Friendship instance, Django automatically performs a database query to retrieve all of the User instances that are linked to that Friendship instance through the join table. This is many to many because one friendlist instance can be associated to many AppUser class instances. And one AppUser class instance can be associated with many friendlist instances. 
-    appfriends = models.ManyToManyField(settings.AUTH_USER_MODEL, blank=True, related_name="appfriends")
+    #symetrical false is to make sure ocan't add themselves as friends. 
+    appfriends = models.ManyToManyField(settings.AUTH_USER_MODEL, blank=True, related_name="appfriends", symmetrical=False ) 
 
     def __str__(self):
         return self.appuser.email
@@ -123,26 +117,51 @@ class Profile(models.Model):
     def __str__(self):
         return self.appuser.email
 
-# class Like(models.Model):
-#     user_from = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="user_from_like")
-#     user_to = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="user_to_like")
-#     like_count = models.IntegerField(default=1)
-#     last_like_date = models.DateTimeField(auto_now_add=True)
+class Like(models.Model):
+    user_from = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="user_from_likes")
+    user_to = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="user_to_likes")
+    like_count = models.PositiveIntegerField(default=1)
+    last_like_date = models.DateTimeField(auto_now_add=True)
 
-#     class Meta:
-#         unique_together = ['user_from', 'user_to']
+    #note Meta is not only for views.py, it is used for defining metadata for Model too, e.g. constraints, ordering, table name.
+    class Meta:
+        #the combination of user_from and user_to must be unique
+        unique_together = ['user_from', 'user_to']
+
+    #clean is a built in method in model class meant for validation at the model level. it isn't run automatically when .save() so must call it explicitly.
+    def clean(self):
+        #check that user can't like themself
+        if self.user_from == self.user_to:
+            raise ValidationError("User cannot like themself!")
+
+    #override .save to trigger clean() validation before saving
+    def save(self, *args, **kwargs):
+        self.clean()
+        #super() is the parent class of the Like model, which is models.Model in django. This line is calling the save method of the parent class (models.Model), ensuring that the instance is saved properly in the database.
+        #this is cuz Like model itselt doesn't handle database operations
+        #this is what needs to be done if overriding save like in this case.
+        super().save(*args, **kwargs)
 
 
-#may need to link this to user email sufix, will figure out how to do later.
-# class Organisation(models.Model):
-#     name = models.CharField(max_length=100)
-#     description = models.TextField(blank=True, null=True)
-#     citytown = models.CharField(max_length=100, blank=True, null=True)
-#     country = models.CharField(max_length=100, blank=True, null=True)
-#     date_created = models.DateTimeField(auto_now_add=True)
 
-#     def __str__(self):
-#         return self.name
+# may need to link this to user email sufix later
+class Organisation(models.Model):
+    name = models.CharField(max_length=100)
+    description = models.TextField(blank=True, null=True)
+    citytown = models.CharField(max_length=100, blank=True, null=True)
+    country = models.CharField(max_length=100, blank=True, null=True)
+    date_created = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.name
+
+    #to get reverse: all appusers associated with the organisation in question.
+    # org = Organisation.objects.get(name="Strawberry Corp")
+    # org_members = org.appusers.all() 
+
+
+
+
 
 
 
