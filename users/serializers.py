@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from .models import *
 
-#ths set of serializer code is originally written by me but taken from my own project for Advanced Web Develoopment
+#ths RegisterSerializer code is originally written by me but taken from my own project for Advanced Web Develoopment
 class RegisterSerializer(serializers.ModelSerializer):
 
     #write only ensures the field can only be written in but not read from. This is to ensure security
@@ -47,85 +47,6 @@ class RegisterSerializer(serializers.ModelSerializer):
 
         return appuser
 
-   
-# class AddRequestSerializer(serializers.ModelSerializer):
-
-#     class Meta:
-#         model = AddRequest
-
-#         #Note that when working with ForeignKeys, e.g. 'user_to', they are represented as model instances in python code. But when you serialise a model, the ForeignKey is usually serialised to the ID of the related object.
-
-#         #Note even though I don't plan for the client to send "user from" id from the client react app, (this is handled dynamically in the views.py component), this field is still necessary because the serialiser needs to know it should look for it in the data dictionary when saving the model.
-
-#         fields = ['user_from' , 'user_to']
-
-#         def create(self, validated_data):
-#             addRequest = AddRequest.objects.create(**validated_data)
-#             addRequest.save()
-#             return addRequest
-
-
-# class AppUserSerializer(serializers.ModelSerializer):
-#     class Meta:
-#         model = AppUser
-#         fields = ['id', 'firstname', 'lastname']
-
-# class AddRequestListSerializer(serializers.ModelSerializer):
-
-#     user_from = serializers.SerializerMethodField()
-
-#     class Meta:
-#         model = AddRequest
-
-#         fields = ['user_from', 'date_time']
-
-#     def get_user_from(self, obj):
-
-#         user_from_instance = AppUser.objects.filter(id=obj.user_from.id)
-#         return AppUserSerializer(user_from_instance, many=True).data
-
-
-# class FriendListSerializer(serializers.ModelSerializer):
-
-#     #it's necessary to include many=True to signal to DRF that we are expecting a list of data (many). And I only want it to be read only for security reasons!
-#     appfriends = AppUserSerializer(many=True, read_only=True)
-
-#     class Meta:
-#         model = Friendship
-#         fields = ['appfriends']
-
-# class SearchUserSerializer(serializers.ModelSerializer):
-
-#     class Meta:
-#         model = AppUser
-#         fields = ['id', 'firstname', 'lastname']
-
-
-# class UpdateStatusSerializer(serializers.ModelSerializer):
-#     class Meta:
-#         model = Profile
-#         fields = ['status']
-
-
-# class UpdateBioSerializer(serializers.ModelSerializer):
-#     class Meta:
-#         model = Profile
-#         fields = ['aboutme', 'citytown', 'country', 'age', 'gender']
-
-
-# class GetProfileSerializer(serializers.ModelSerializer):
-
-#     appuser = serializers.SerializerMethodField()
-
-#     class Meta:
-#         model = Profile
-#         fields = ['appuser', 'status', 'aboutme', 'citytown', 'country', 'age', 'gender']
-
-
-#     def get_appuser(self, obj):
-
-#         user_instance = AppUser.objects.filter(id=obj.appuser.id)
-#         return AppUserSerializer(user_instance, many=True).data
 
 class LikeSerializer(serializers.ModelSerializer):
     class Meta:

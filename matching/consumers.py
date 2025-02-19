@@ -78,8 +78,6 @@ class QueueConsumer(AsyncWebsocketConsumer):
 
         print("run_matching_algo.delay()")    
 
-        run_matching_algo.delay()
-
 
     async def disconnect(self, disconnect_code):
 
