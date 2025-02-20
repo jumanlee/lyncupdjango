@@ -76,7 +76,7 @@ class QueueConsumer(AsyncWebsocketConsumer):
             await self.close(code=4123)
             return
 
-        print("run_matching_algo.delay()")    
+        print("wait for scheduled run_matching_algo.delay()")    
 
 
     async def disconnect(self, disconnect_code):

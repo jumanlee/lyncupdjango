@@ -49,6 +49,7 @@ def build_graph_annoy():
 
 @shared_task
 def run_matching_algo():
+    print("entered run matching algo")
 
     #connect to Redis
     redis_client = redis.from_url(settings.REDIS_URL, decode_responses=True)
@@ -72,22 +73,25 @@ def run_matching_algo():
         print(error)
         user_ids = []
 
-    # #users is in QuerySet, not yet hit the database
-    # users = AppUser.objects.filter(id__in=user_ids)
+    #to double check if these ids actually do exist.
+    #users is in QuerySet, not yet hit the database
+    users_queryset = AppUser.objects.filter(id__in=user_ids)
 
-    # #convert to list, this is when Queryset hits the database
-    # users = list(users)
+    #convert to list, this is when Queryset hits the database due to both list and values_list
+    #flat true makes the tuples into plain list
+    retrieved_user_ids = list(users_queryset.values_list('id', flat=True))
+    print(f"users: {retrieved_user_ids}")
 
-    if len(user_ids) < 2:
-        return
+    # if len(retrieved_user_ids) < 2:
+    #     return
 
     logger.info("user_ids length")
-    logger.info(len(user_ids))
+    logger.info(len(retrieved_user_ids))
 
     #this automatically initialises "global" and "leftover" queues
     queue_manager = ClusterQueueManager()
 
-    for user_id in user_ids:
+    for user_id in retrieved_user_ids:
         queue_manager.add("global", int(user_id))
     
     #run the batch matching algo
@@ -97,7 +101,7 @@ def run_matching_algo():
     #distribute grouped users to rooms
     #format of matched_groups
     # matched_groups = [{"room_id": 123, "user_ids": [1,2,3,4]}, {"room_id": 555, "user_ids": [5,6,7,8]}]
-    matched_groups = distribute_rooms(grouped_users, redis_client)
+    matched_groups, users_in_matched_groups = distribute_rooms(grouped_users, redis_client)
 
 
     #remember when this is returned, it is a tuple as two values are returned!
@@ -114,6 +118,14 @@ def run_matching_algo():
     channel_layer = get_channel_layer()
 
     success_matched_userIds = []
+
+    # matched_groups in this format:
+    #  Tuple[List[Dict[str, object]], List[int]]
+    # [
+    #     {"room_id": 5, "user_ids": [1, 2, 3, 4]},
+    #     {"room_id": 2, "user_ids": [5, 6, 7, 8]}
+    # ]
+
 
     for group in matched_groups:
         room_id = group["room_id"]
@@ -138,7 +150,10 @@ def run_matching_algo():
     #srem command removes one or more members from a set.
     #*unpacks the elements of the collection, so instead of passing the collection as one argument, it passes each element of the collection as a separate argument
     #here is to remove the successfully matched users from the Redis queue.
-    redis_client.srem("queue",*success_matched_userIds)
+    #only remove if its not empty:
+    if success_matched_userIds:
+        print(f"success_matched_userIds is not empty:{success_matched_userIds}")
+        redis_client.srem("queue",*success_matched_userIds)
             
 
 

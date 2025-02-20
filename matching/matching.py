@@ -120,6 +120,9 @@ def run_batch_matching(queue_manager, base_dir=None, batch_size=50) -> Dict[str,
             i = 0
             continue
         i += 1
+    #added to test if only one user, the matching works, may delete later
+    if group:
+        groups_formed.append(group)
 
     # groups = match_in_cluster("leftover", queue_manager, base_dir, batch_size)
     res["leftover"] = groups_formed
