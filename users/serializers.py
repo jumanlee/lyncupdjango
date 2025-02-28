@@ -54,11 +54,33 @@ class LikeSerializer(serializers.ModelSerializer):
         #we only need the person that is liked. 
         fields = ['user_to']
 
+class UpdateProfileSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Profile
+
+        fields = ["aboutme", 'citytown', 'country', 'age', "gender"]
+
 #my code ends here
 
 
 
+    appuser = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="profile")
+    status = models.TextField(blank=True, null=True)
+    aboutme = models.TextField(blank=True, null=True)  
+    citytown = models.CharField(max_length=100, blank=True, null=True)
+    country = models.CharField(max_length=100, blank=True, null=True)    
+    age = models.IntegerField(blank=True, null=True)
 
+    gender = models.CharField(max_length=2, 
+    choices=[
+        ('M', 'Male'),
+        ('F', 'Female'),
+        ('NA', 'Unspecified'),
+    ], 
+    default='NA') 
+
+    def __str__(self):
+        return self.appuser.email
 
 
 
