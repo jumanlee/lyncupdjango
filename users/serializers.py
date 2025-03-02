@@ -54,33 +54,53 @@ class LikeSerializer(serializers.ModelSerializer):
         #we only need the person that is liked. 
         fields = ['user_to']
 
-class UpdateProfileSerializer(serializers.ModelSerializer):
+
+class OrganisationSerializer(serializers.ModelSerializer):
+    class Meta: 
+        model = Organisation
+        fields = ["name", "description"]
+
+
+class UpdateProfileOrgSerializer(serializers.ModelSerializer):
+    
+    #this retrieves the organisation instance based on the organisation id feeds in as input in the field. Organisation.objects.all() is just saying retrieve from this set. required means user MUST provide the id. 
+    #nutshell: queryset=Organisation.objects.all() is a matter with Organisation model, whereas source="appuser.organisation" is a matter with Profile.
+    #organisation is an PrimaryKeyRelatedField instance. organisation is a PrimaryKeyRelatedField instance, which is a special DRF field that serializes an Organisation instance to just its id or deserializes an id to an Organisation instance. This field allows the user to update or change their associated company.
+    organisation_id = serializers.PrimaryKeyRelatedField(
+        queryset=Organisation.objects.all(),
+        required=False,
+        write_only=True
+    )
+
+    #read only cuz I don't want users to change the company's details!
+    organisation_details = OrganisationSerializer(source="appuser.organisation", read_only=True)
+
     class Meta:
         model = Profile
 
-        fields = ["aboutme", 'citytown', 'country', 'age', "gender"]
+        fields = ["aboutme", 'citytown', 'country', 'age', 'gender', "organisation_id", "organisation_details"]
 
-#my code ends here
+    #Note: both PUT (full update) and PATCH (partial update) use the same update() method in the serializer. This is called within perform_update in views, UpdateMixin. 
+    #overriding this is to allow the user to change their associated orgniasaitoin if they want to. 
+    #instance is the profile instance here.
+    def update(self, instance, validated_data):
+        if "organisation_id" in validated_data:
+            # #can just directly assign organisation_id (note, DRF has already resolved organisation_id  to an Organisation instance at this point) cuz remember, this is from validated_data, and organisation_id is a serializers.PrimaryKeyRelatedField, so this has been verified.
+            # instance.appuser.organisation = organisation
+            instance.appuser.organisation = validated_data["organisation_id"]
+            instance.appuser.save()
+            
+        #we need to call thye parent ModelSerializer.update() to save all fields, not just the organisation saved above!
+        return super().update(instance, validated_data)
 
 
 
-    appuser = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="profile")
-    status = models.TextField(blank=True, null=True)
-    aboutme = models.TextField(blank=True, null=True)  
-    citytown = models.CharField(max_length=100, blank=True, null=True)
-    country = models.CharField(max_length=100, blank=True, null=True)    
-    age = models.IntegerField(blank=True, null=True)
 
-    gender = models.CharField(max_length=2, 
-    choices=[
-        ('M', 'Male'),
-        ('F', 'Female'),
-        ('NA', 'Unspecified'),
-    ], 
-    default='NA') 
 
-    def __str__(self):
-        return self.appuser.email
+
+
+
+
 
 
 

@@ -10,7 +10,7 @@ class CustomUserAdmin(UserAdmin):
     model = AppUser
 
     #what fields to display
-    list_display = ('id', 'email', 'username', 'firstname', 'lastname', 'is_staff', 'is_active')
+    list_display = ('id', 'email', 'username', 'firstname', 'lastname', 'organisation', 'is_staff', 'is_active')
 
     #what fields to filter by in the admin panel
     list_filter = ('is_staff', 'is_active')
@@ -27,5 +27,19 @@ class LikeAdmin(admin.ModelAdmin):
     list_filter = ('last_like_date',) 
     search_fields = ('user_from__email', 'user_to__email')  
 
+class ProfileAdmin(admin.ModelAdmin):
+    model = Profile
+    list_display = ('id', 'appuser', "citytown", "aboutme", 'country', 'age', 'gender')
+    list_filter = ('gender', 'country')
+    search_fields = ('appuser__email', 'appuser__username', 'citytown', 'country')
+
+class OrganisationAdmin(admin.ModelAdmin):
+    model = Organisation
+    list_display = ('id', 'name', 'citytown', 'country', 'date_created')
+    search_fields = ('name', 'citytown', 'country')
+
+
 admin.site.register(AppUser, CustomUserAdmin)
 admin.site.register(Like, LikeAdmin)
+admin.site.register(Profile, ProfileAdmin)
+admin.site.register(Organisation, OrganisationAdmin)

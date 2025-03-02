@@ -101,15 +101,15 @@ class UnlikeView(APIView):
 #I know we could alternatively use generics.UpdateAPIView alone instead which means I don't need to use Mixin as its included but I want more flexibility to customise, such as logging different error messages as below. I prefer using these instead.
 class UpdateProfileView(generics.GenericAPIView, mixins.UpdateModelMixin):
     permission_classes = [IsAuthenticated]
-    serializer_class = UpdateProfileSerializer
+    serializer_class = UpdateProfileOrgSerializer
 
     #get_objects is called by automatically by update(), (which is automatically called by put, if using UpdateAPIView), and partial_update(), (automatically called if using UpdateAPIView), from UpdateModelMixin. The reason I override this is because the default behaviour is it would try to grab the pk in the url and then look up the relevant role in model. I don't want that, I want to eliminate the chance of the user sending the request to possibly change other users' profiles.
-    def get_objects(self):
+    def get_object(self):
         #ensure the user can only update their own profile
         #if the profile doesn't yet exist, it will create it.
         #remember, this is called by .update and .partial_update (defined in put and patch below), so it can access the "request" parameter from the parent. it is a method inside a class-based view, and self refers to the view instance that automatically contains the request object
 
-        profile, isCreated = Profile.get_or_create.(appuser=self.request.user)
+        profile, isCreated = Profile.objects.get_or_create(appuser=self.request.user)
         return profile
 
     #because we're not using generics.UpdateAPIView , we're using generics.GenericAPIView, mixins.UpdateModelMixin, we need to define put and patch.
@@ -120,9 +120,9 @@ class UpdateProfileView(generics.GenericAPIView, mixins.UpdateModelMixin):
     # def update(self, request, *args, **kwargs):
     #     partial = kwargs.pop('partial', False)
     #     instance = self.get_object()
-    #     serializer = self.get_serializer(instance, data=request.data, partial=partial)
+    #     serializer = self.get_serializer(instance, data=request.data, partial=partial) <---instance is from get_object
     #     serializer.is_valid(raise_exception=True)
-    #     self.perform_update(serializer)
+    #     self.perform_update(serializer) <---this one calls serializer.save, which calls update in serializer.
     #     return Response(serializer.data)
 
     #may not need this but place here anyway just in case:
