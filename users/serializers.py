@@ -60,6 +60,11 @@ class OrganisationSerializer(serializers.ModelSerializer):
         model = Organisation
         fields = ["name", "description"]
 
+class AppUserNameSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = AppUser
+        fields = ["firstname", "lastname"]
+
 
 class UpdateProfileOrgSerializer(serializers.ModelSerializer):
     
@@ -75,10 +80,13 @@ class UpdateProfileOrgSerializer(serializers.ModelSerializer):
     #read only cuz I don't want users to change the company's details!
     organisation_details = OrganisationSerializer(source="appuser.organisation", read_only=True)
 
+    #appuser is a foreign key field in Profile
+    appuser_name = AppUserNameSerializer(source="appuser")
+
     class Meta:
         model = Profile
 
-        fields = ["aboutme", 'citytown', 'country', 'age', 'gender', "organisation_id", "organisation_details"]
+        fields = ["appuser_name", "aboutme", 'citytown', 'country', 'age', 'gender', "organisation_id", "organisation_details"]
 
     #Note: both PUT (full update) and PATCH (partial update) use the same update() method in the serializer. This is called within perform_update in views, UpdateMixin. 
     #overriding this is to allow the user to change their associated orgniasaitoin if they want to. 
@@ -92,6 +100,20 @@ class UpdateProfileOrgSerializer(serializers.ModelSerializer):
             
         #we need to call thye parent ModelSerializer.update() to save all fields, not just the organisation saved above!
         return super().update(instance, validated_data)
+
+#read-only show profile
+class ShowProfileOrgSerializer(serializers.ModelSerializer):
+
+    organisation_details = OrganisationSerializer(source="appuser.organisation", read_only=True)
+
+    appuser_name = AppUserNameSerializer(source="appuser", read_only=True)
+
+    class Meta:
+        model = Profile
+
+        fields = ["appuser_name", "aboutme", 'citytown', 'country', 'age', 'gender', "organisation_details"]
+
+
 
 
 

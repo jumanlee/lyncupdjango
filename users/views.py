@@ -17,6 +17,14 @@ from .serializers import *
 
 #no need for Login view as we're using JWT and it's already handled by djangorestframework-simplejwt. see main lyncup folder's urls.py
 
+#this is just a class for frontend users to test if the API service can be accessed with their authenticated token.
+class TestApi(APIView):
+    #DRF automatically handles authentication errors when IsAuthenticated is used, don't need to write it myself.
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        return Response({"message": "API access successful!"}, status=200) 
+
 #register users
 class Register(generics.GenericAPIView, mixins.CreateModelMixin):
 
@@ -130,6 +138,30 @@ class UpdateProfileView(generics.GenericAPIView, mixins.UpdateModelMixin):
     #even though serializer defines all fields, DRF knows to update only "aboutme" because of the partial=True flag, which is done when partial_update() is called.
     def patch(self, request, *args, **kwargs):
         return self.partial_update(request, *args, **kwargs)
+
+#to show user their own profile info
+class ShowProfileView(generics.RetrieveAPIView):
+    
+    permission_classes = [IsAuthenticated]
+
+    serializer_class = UpdateProfileOrgSerializer
+    queryset = Profile.objects.all()
+    #DRF should try to match this field. The model field that should be used for performing object lookup of individual model instances. Defaults to 'pk', see https://www.django-rest-framework.org/api-guide/generic-views/
+    lookup_field = "appuser"
+
+    #this field is what's in the url, this will be used to lookup appuser in lookup_field. See documentation.
+    lookup_url_kwarg = "appuser_id"
+
+
+    #usually get_queryset is used to alter the default behaviour of queryset, which is inherited from generics.RetrieveAPIView. Note get_queryset() is called by get_object()
+    #But in this case, cannot use Profile.objects.filter as it returns a queryset, but generics.RetrieveAPIView's get_object expects an object! This gave me problems! 
+    # def get_queryset(self):
+    #     return Profile.objects.filter(appuser=self.request.user)
+
+    
+
+    
+
 
 
 
