@@ -153,10 +153,41 @@ class ShowProfileView(generics.RetrieveAPIView):
     lookup_url_kwarg = "appuser_id"
 
 
-    #usually get_queryset is used to alter the default behaviour of queryset, which is inherited from generics.RetrieveAPIView. Note get_queryset() is called by get_object()
-    #But in this case, cannot use Profile.objects.filter as it returns a queryset, but generics.RetrieveAPIView's get_object expects an object! This gave me problems! 
-    # def get_queryset(self):
-    #     return Profile.objects.filter(appuser=self.request.user)
+#find organisation in the database, which may return a collection. generics.RetrieveAPIView is not suitable as we will give a partial keyword DRF will then return a collection of related companies. I need to override, so generics + mixins is better.
+class SearchOrgView(generics.GenericAPIView, mixins.ListModelMixin):
+    permission_classes = [IsAuthenticated]
+    serializer_class = OrganisationSerializer
+
+    def get_queryset(self):
+        #e.g. /?q=google
+        #shouldnt be ("q", None) as this would return all records
+        org_name = self.request.query_params.get("q", "").strip()
+        #icontains is case insenstiive search
+        queryset = Organisation.objects.filter(name__icontains=org_name)
+        return queryset
+
+
+    def get(self, request, *args, **kwargs):
+        return self.list(request, *args, **kwargs)
+
+    #how .list works internally https://www.cdrf.co/3.14/rest_framework.mixins/ListModelMixin.html#list:
+    # def list(self, request, *args, **kwargs):
+    #     queryset = self.filter_queryset(self.get_queryset())
+
+    #     page = self.paginate_queryset(queryset)
+    #     if page is not None:
+    #         serializer = self.get_serializer(page, many=True)
+    #         return self.get_paginated_response(serializer.data)
+
+    #     serializer = self.get_serializer(queryset, many=True)
+    #     return Response(serializer.data)
+
+
+
+
+
+
+
 
     
 
