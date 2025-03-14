@@ -20,7 +20,7 @@ from .serializers import *
 #this is just a class for frontend users to test if the API service can be accessed with their authenticated token.
 class TestApi(APIView):
     #DRF automatically handles authentication errors when IsAuthenticated is used, don't need to write it myself.
-    permission_classes = [IsAuthenticated]
+    # permission_classes = [IsAuthenticated]
 
     def get(self, request, *args, **kwargs):
         return Response({"message": "API access successful!"}, status=200) 
