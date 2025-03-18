@@ -1,0 +1,123 @@
+services:
+  django:
+    build: .
+    container_name: django_app
+    command: daphne -b 0.0.0.0 -p 8080 lyncup.asgi:application
+    volumes:
+      - .:/usr/src/app
+    ports:
+      - "8080:8080"
+    depends_on:
+      - postgres
+      - redis
+      - migrate  #ensure migrations run first
+
+    environment:
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_HOST: postgres
+      DB_PORT: ${DB_PORT}
+      SECRET_KEY: ${SECRET_KEY}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080"]
+      interval: 10s
+      retries: 3
+      start_period: 10s
+
+# The migrate service runs once, applies migrations, and exits.
+# The django service waits until migrate finishes before starting.
+# When restart the django container, migrations won't run again because the migrate service isn’t restarted
+
+  migrate:
+    build: .
+    container_name: django_migrations
+    # command: python manage.py migrate --noinput
+    # Runs migrations, then creates a superuser
+    command: >
+      sh -c '
+        python manage.py migrate --noinput &&
+        (python manage.py loaddata lyncup/fixtures/initial_data.json || 
+        echo "No fixture or data already loaded")
+      '
+    depends_on:
+      - postgres
+    environment:
+      DB_HOST: postgres
+      DB_PORT: ${DB_PORT}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+
+  postgres:
+    image: postgres:16
+    container_name: postgres_db
+    restart: always
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "${DB_USER}", "-d", "${DB_NAME}"]
+      interval: 35s
+      retries: 5
+      start_period: 10s
+
+  redis:
+    image: redis:7
+    container_name: redis_service
+    restart: always
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  celery:
+    build: .
+    container_name: celery_worker
+    command: celery -A lyncup worker --loglevel=info
+    volumes:
+      - .:/usr/src/app
+    depends_on:
+      - django
+      - redis
+      - postgres
+    environment:
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_HOST: postgres
+      DB_PORT: ${DB_PORT}
+      SECRET_KEY: ${SECRET_KEY}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+
+  celerybeat:
+    build: .
+    container_name: celery_beat
+    command: celery -A lyncup beat --loglevel=info --scheduler django_celery_beat.schedulers:DatabaseScheduler
+    volumes:
+      - .:/usr/src/app
+    depends_on:
+      - django
+      - redis
+      - postgres
+    environment:
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_HOST: postgres
+      DB_PORT: ${DB_PORT}
+      SECRET_KEY: ${SECRET_KEY}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+
+volumes:
+  postgres_data:

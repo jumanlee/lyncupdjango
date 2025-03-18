@@ -28,7 +28,9 @@ SECRET_KEY = config('SECRET_KEY')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = [ 'localhost','127.0.0.1',]
+# ALLOWED_HOSTS = [ 'localhost','127.0.0.1',]
+ALLOWED_HOSTS = ["localhost", "127.0.0.1", "0.0.0.0", "django"]
+
 
 
 # Application definition
@@ -63,15 +65,20 @@ INSTALLED_APPS = [
 
 CORS_ALLOWED_ORIGINS = ['http://localhost:5173']
 
+REDIS_HOST = config('REDIS_HOST', default="redis")  #fallback to "redis" if not in .env
+REDIS_PORT = config("REDIS_PORT", default='6379')
+
+REDIS_URL = f"redis://{REDIS_HOST}:{REDIS_PORT}/0"
+
 
 CHANNEL_LAYERS = {
     # a python dict of a configuration for using Redis as a kind of message board essentially it's going to hold all of the data that is all of the messages for each of the rooms. So we're just saying that we're going to use the channel's Redis package that we installed much earlier. And the configuration here, we're going to find Redis at local host, the local IP address and it's going to be running on its default port number 6379, so that when we come to update the app will have to start Redis.
     'default': {
         'BACKEND': 'channels_redis.core.RedisChannelLayer',
         'CONFIG': {
-            'hosts': [('127.0.0.1', 6379)]
+            # 'hosts': [('127.0.0.1', 6379)]
             # 'hosts': [('localhost', 6379)]
-
+            'hosts': [(REDIS_HOST, int(REDIS_PORT))],
 
         },
 
@@ -110,13 +117,16 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = 'lyncup.urls'
 
-REDIS_URL = "redis://127.0.0.1:6379"
+# REDIS_URL = "redis://127.0.0.1:6379"
 
-#Celery settings
-CELERY_BROKER_URL = 'redis://127.0.0.1:6379/0'
+# #Celery settings
+# CELERY_BROKER_URL = 'redis://127.0.0.1:6379/0'
 
-#added by me
-CELERY_RESULT_BACKEND = "django-db"
+# #added by me
+# CELERY_RESULT_BACKEND = "django-db"
+CELERY_BROKER_URL = REDIS_URL
+CELERY_RESULT_BACKEND = REDIS_URL
+
 CELERY_RESULT_EXTENDED = True
 
 
