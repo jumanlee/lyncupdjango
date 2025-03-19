@@ -144,7 +144,7 @@ class ShowProfileView(generics.RetrieveAPIView):
     
     permission_classes = [IsAuthenticated]
 
-    serializer_class = UpdateProfileOrgSerializer
+    serializer_class = ShowProfileOrgSerializer
     queryset = Profile.objects.all()
     #DRF should try to match this field. The model field that should be used for performing object lookup of individual model instances. Defaults to 'pk', see https://www.django-rest-framework.org/api-guide/generic-views/
     lookup_field = "appuser"

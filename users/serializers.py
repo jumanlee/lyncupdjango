@@ -8,10 +8,17 @@ class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)
     password2 = serializers.CharField(write_only=True)
 
+    #the serializer will take that id, find the corresponding Organisation in the database and assign it to the AppUser
+    organisation_id = serializers.PrimaryKeyRelatedField(
+        queryset=Organisation.objects.all(),
+        required=False,
+        write_only=True
+    )
+
     class Meta:
         model = AppUser
 
-        fields = ['email', 'username', 'firstname', 'lastname', 'password', 'password2']
+        fields = ['email', 'username', 'firstname', 'lastname', 'password', 'password2', 'organisation_id']
 
         #make them all required
         extra_kwargs = {
@@ -19,6 +26,7 @@ class RegisterSerializer(serializers.ModelSerializer):
             'lastname': {'required': True},
             'username': {'required': True},
             'email': {'required': True},
+            'organisation_id': {'required': False},
         }
 
     # .create() method in serializer is called when serializer.save() is executed inside perform_create() in views.py.
@@ -80,13 +88,15 @@ class UpdateProfileOrgSerializer(serializers.ModelSerializer):
     #read only cuz I don't want users to change the company's details!
     organisation_details = OrganisationSerializer(source="appuser.organisation", read_only=True)
 
-    #appuser is a foreign key field in Profile
-    appuser_name = AppUserNameSerializer(source="appuser")
+    # #appuser is a foreign key field in Profile. Updating nested field will be handled below as this alone is not enough!
+    # appuser_name = AppUserNameSerializer(source="appuser", read_only=True)
+    firstname = serializers.CharField(required=True)
+    lastname = serializers.CharField(required=True)
 
     class Meta:
         model = Profile
 
-        fields = ["appuser_name", "aboutme", 'citytown', 'country', 'age', 'gender', "organisation_id", "organisation_details"]
+        fields = ["firstname", "lastname", "aboutme", 'citytown', 'country', 'age', 'gender', "organisation_id", "organisation_details"]
 
     #Note: both PUT (full update) and PATCH (partial update) use the same update() method in the serializer. This is called within perform_update in views, UpdateMixin. 
     #overriding this is to allow the user to change their associated orgniasaitoin if they want to. 
@@ -97,6 +107,13 @@ class UpdateProfileOrgSerializer(serializers.ModelSerializer):
             # instance.appuser.organisation = organisation
             instance.appuser.organisation = validated_data["organisation_id"]
             instance.appuser.save()
+
+        if "firstname" in validated_data or "lastname" in validated_data:
+            if "firstname" in validated_data:
+                instance.appuser.firstname = validated_data["firstname"]
+            if "lastname" in validated_data:
+                instance.appuser.lastname = validated_data["lastname"]
+            instance.appuser.save()
             
         #we need to call thye parent ModelSerializer.update() to save all fields, not just the organisation saved above!
         return super().update(instance, validated_data)
@@ -106,12 +123,15 @@ class ShowProfileOrgSerializer(serializers.ModelSerializer):
 
     organisation_details = OrganisationSerializer(source="appuser.organisation", read_only=True)
 
-    appuser_name = AppUserNameSerializer(source="appuser", read_only=True)
+    # appuser_name = AppUserNameSerializer(source="appuser", read_only=True)
+    firstname = serializers.CharField(source="appuser.firstname", read_only=True)
+    lastname = serializers.CharField(source="appuser.lastname", read_only=True)
+
 
     class Meta:
         model = Profile
 
-        fields = ["appuser_name", "aboutme", 'citytown', 'country', 'age', 'gender', "organisation_details"]
+        fields = ["firstname", "lastname", "aboutme", 'citytown', 'country', 'age', 'gender', "organisation_details"]
 
 
 

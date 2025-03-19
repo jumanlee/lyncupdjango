@@ -41,8 +41,8 @@ class AppUser(AbstractBaseUser, PermissionsMixin):
     id = models.BigAutoField(primary_key=True)
     email = models.EmailField(max_length=255, unique=True)
     username = models.CharField(max_length=150, unique=True)
-    firstname = models.CharField(max_length=150)
-    lastname = models.CharField(max_length=150)
+    firstname = models.CharField(max_length=150, blank=False, null=False)
+    lastname = models.CharField(max_length=150, blank=False, null=False)
     is_staff = models.BooleanField(default=False)
     #is_active is built-in
     is_active = models.BooleanField(default=True)

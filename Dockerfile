@@ -13,7 +13,7 @@ COPY requirements.txt .
 #install dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-#copy the rest of your code
+#copy the rest of the codebase in LyncUp project folder
 COPY . .
 
 #Optional: If want to run migrations here or collectstatic in production,
