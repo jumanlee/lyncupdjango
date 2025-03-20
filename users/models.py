@@ -146,7 +146,7 @@ class Like(models.Model):
 
 # may need to link this to user email sufix later
 class Organisation(models.Model):
-    name = models.CharField(max_length=100)
+    name = models.CharField(max_length=100, unique=True)
     description = models.TextField(blank=True, null=True)
     citytown = models.CharField(max_length=100, blank=True, null=True)
     country = models.CharField(max_length=100, blank=True, null=True)
