@@ -234,8 +234,8 @@ from datetime import timedelta
 #code taken from https://django-rest-framework-simplejwt.readthedocs.io/en/latest/settings.html
 
 SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=5),
-    "REFRESH_TOKEN_LIFETIME": timedelta(days=1),
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=1),
+    "REFRESH_TOKEN_LIFETIME": timedelta(minutes=2),
     "ROTATE_REFRESH_TOKENS": False,
     #i set blacklist to true
     "BLACKLIST_AFTER_ROTATION": True,

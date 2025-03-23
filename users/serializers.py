@@ -8,17 +8,17 @@ class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)
     password2 = serializers.CharField(write_only=True)
 
-    #the serializer will take that id, find the corresponding Organisation in the database and assign it to the AppUser
-    organisation_id = serializers.PrimaryKeyRelatedField(
-        queryset=Organisation.objects.all(),
-        required=False,
-        write_only=True
-    )
+    # #the serializer will take that id, find the corresponding Organisation in the database and assign it to the AppUser
+    # organisation_id = serializers.PrimaryKeyRelatedField(
+    #     queryset=Organisation.objects.all(),
+    #     required=False,
+    #     write_only=True
+    # )
 
     class Meta:
         model = AppUser
 
-        fields = ['email', 'username', 'firstname', 'lastname', 'password', 'password2', 'organisation_id']
+        fields = ['email', 'username', 'firstname', 'lastname', 'password', 'password2']
 
         #make them all required
         extra_kwargs = {
@@ -26,7 +26,6 @@ class RegisterSerializer(serializers.ModelSerializer):
             'lastname': {'required': True},
             'username': {'required': True},
             'email': {'required': True},
-            'organisation_id': {'required': False},
         }
 
     # .create() method in serializer is called when serializer.save() is executed inside perform_create() in views.py.
@@ -46,10 +45,20 @@ class RegisterSerializer(serializers.ModelSerializer):
 
         # the objects attribute is a manager object that is automatically created for every model. The objects attribute provides a set of methods that can be used to query the database for objects of the model.
         # create_user() method is not a built-in Django method, but rather a custom method that is defined in the AppUserManager class.
-        appuser = AppUser.objects.create_user(**validated_data)
-        #properly hash password
-        appuser.set_password(password)
-        appuser.save()
+        #can't do appuser = AppUser.objects.create_user(**validated_data) as we've already popped the password, hence need to manually input:
+        appuser = AppUser.objects.create_user(
+            email=validated_data["email"],
+            username=validated_data['username'],
+            #password doesn't need set_password to hash as AppUserManager's create_user already does it for us. set_password is only needed if we save password outside create_user
+            password=password,
+            firstname=validated_data['firstname'],
+            lastname=validated_data['lastname'],
+        )
+
+        #the below not needed anymore as we are putting it in create_user above
+        # #properly hash password
+        # appuser.set_password(password)
+        # appuser.save()
 
         #now create the associated profile object
         Profile.objects.create(appuser=appuser)
