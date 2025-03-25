@@ -10,10 +10,9 @@ urlpatterns = [
     path('like/', views.LikeView.as_view(), name='like_api'),
     path('unlike/', views.UnlikeView.as_view(), name='unlike_api'),
     path("updateprofile/", views.UpdateProfileView.as_view(), name='updateprofile_api'),
-    path("showprofile/<int:appuser_id>/", views.ShowProfileView.as_view(), name='showeprofile_api'),
+    path("showprofile/<int:appuser_id>/", views.ShowProfileView.as_view(), name='showprofile_api'),
     path("searchorg/", views.SearchOrgView.as_view(), name='searchorg_api'),
-    
-
+    path("showmultiprofiles/", views.ShowMultiProfilesView.as_view(), name='showmultiprofiles_api'),
 ]
 
 #my code ends here

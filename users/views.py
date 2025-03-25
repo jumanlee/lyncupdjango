@@ -152,6 +152,27 @@ class ShowProfileView(generics.RetrieveAPIView):
     #this field is what's in the url, this will be used to lookup appuser in lookup_field. See documentation.
     lookup_url_kwarg = "appuser_id"
 
+#to query multiple profiles
+class ShowMultiProfilesView(generics.ListAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = ShowProfileOrgSerializer
+
+    def get_queryset(self):
+        user_ids_param = self.request.query_params.get("user_ids", "")
+        user_ids = []
+        try:
+            for uid in user_ids_param.split(','):
+                if uid.strip().isdigit():
+                    user_ids.append(int(uid.strip()))
+
+            if not user_ids:
+                #to avoid returning all profiles
+                return Profile.objects.none()
+        except ValueError:
+            user_ids = []
+        return Profile.objects.filter(appuser__id__in=user_ids)
+
+
 
 #find organisation in the database, which may return a collection. generics.RetrieveAPIView is not suitable as we will give a partial keyword DRF will then return a collection of related companies. I need to override, so generics + mixins is better.
 class SearchOrgView(generics.GenericAPIView, mixins.ListModelMixin):
