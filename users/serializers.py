@@ -137,6 +137,7 @@ class ShowProfileOrgSerializer(serializers.ModelSerializer):
     # appuser_name = AppUserNameSerializer(source="appuser", read_only=True)
     firstname = serializers.CharField(source="appuser.firstname", read_only=True)
     lastname = serializers.CharField(source="appuser.lastname", read_only=True)
+    user_id = serializers.IntegerField(source="appuser.id", read_only=True)
 
     organisation_id = serializers.IntegerField(source="appuser.organisation.id", read_only=True)
     organisation_name = serializers.CharField(source="appuser.organisation.name", read_only=True)
@@ -144,7 +145,7 @@ class ShowProfileOrgSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Profile
-        fields = ["firstname", "lastname", "aboutme", 'citytown', 'country', 'age', 'gender', "organisation_id", "organisation_name"]
+        fields = ["user_id", "firstname", "lastname", "aboutme", 'citytown', 'country', 'age', 'gender', "organisation_id", "organisation_name"]
 
 
 
