@@ -30,18 +30,20 @@ services:
 # The migrate service runs once, applies migrations, and exits.
 # The django service waits until migrate finishes before starting.
 # When restart the django container, migrations won't run again because the migrate service isn’t restarted
-
+# Caution! Dangerous error which could wipe out Organisation values and others: migrate automatically wipes out Organisation field value on AppUser due to (python manage.py loaddata lyncup/fixtures/initial_data.json || echo "No fixture or data already loaded"). Therefore, I've commented out the loaddata command, which I think is better executed manually when needed.
   migrate:
     build: .
     container_name: django_migrations
-    # command: python manage.py migrate --noinput
-    # Runs migrations, then creates a superuser
-    command: >
-      sh -c '
-        python manage.py migrate --noinput &&
-        (python manage.py loaddata lyncup/fixtures/initial_data.json || 
-        echo "No fixture or data already loaded")
-      '
+    command: python manage.py migrate --noinput
+
+    # # command: python manage.py migrate --noinput
+    # # Runs migrations, then creates a superuser
+    # command: >
+    #   sh -c '
+    #     python manage.py migrate --noinput &&
+    #     (python manage.py loaddata lyncup/fixtures/initial_data.json || 
+    #     echo "No fixture or data already loaded")
+    #   '
     depends_on:
       - postgres
     environment:

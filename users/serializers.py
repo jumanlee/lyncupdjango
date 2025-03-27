@@ -8,13 +8,6 @@ class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)
     password2 = serializers.CharField(write_only=True)
 
-    # #the serializer will take that id, find the corresponding Organisation in the database and assign it to the AppUser
-    # organisation_id = serializers.PrimaryKeyRelatedField(
-    #     queryset=Organisation.objects.all(),
-    #     required=False,
-    #     write_only=True
-    # )
-
     class Meta:
         model = AppUser
 
@@ -31,10 +24,8 @@ class RegisterSerializer(serializers.ModelSerializer):
     # .create() method in serializer is called when serializer.save() is executed inside perform_create() in views.py.
     def create(self, validated_data):
 
-        #after .pop(), validated_data doesn't contain the password2 property anymore, instead it's been moved to the password2 variable.
         password2 = validated_data.pop('password2')
 
-        #Don't retain the password, handle this separately, as we need to hash it.
         password = validated_data.pop('password')
 
         if not password or not password2:
@@ -43,9 +34,6 @@ class RegisterSerializer(serializers.ModelSerializer):
         if password != password2:
             raise serializers.ValidationError({"password2": "Passwords do not match!"})
 
-        # the objects attribute is a manager object that is automatically created for every model. The objects attribute provides a set of methods that can be used to query the database for objects of the model.
-        # create_user() method is not a built-in Django method, but rather a custom method that is defined in the AppUserManager class.
-        #can't do appuser = AppUser.objects.create_user(**validated_data) as we've already popped the password, hence need to manually input:
         appuser = AppUser.objects.create_user(
             email=validated_data["email"],
             username=validated_data['username'],
@@ -97,8 +85,9 @@ class UpdateProfileOrgSerializer(serializers.ModelSerializer):
         # write_only=True
     )
 
-    firstname = serializers.CharField(required=True)
-    lastname = serializers.CharField(required=True)
+    #it's important to include write_only=True as we are going to pop these from validated_data, by specifying its write_only, DRF return super().update(instance, validated_data) will not throw an error when these are not in validated_data.
+    firstname = serializers.CharField(required=True, write_only=True)
+    lastname = serializers.CharField(required=True, write_only=True)
 
     organisation_name = serializers.CharField(source="appuser.organisation.name", read_only=True)
 
@@ -111,28 +100,46 @@ class UpdateProfileOrgSerializer(serializers.ModelSerializer):
     #overriding this is to allow the user to change their associated orgniasaitoin if they want to. 
     #instance is the profile instance here.
     def update(self, instance, validated_data):
-        if "organisation_id" in validated_data:
-            try:
-                #remember validated_data["organisation_id"] is not an id, its an instance! DRF already resolved it to the instance, so there is no need to fetch it manually
-                instance.appuser.organisation = validated_data["organisation_id"]
-                instance.appuser.save()
-            except Organisation.DoesNotExist:
-                raise serializers.ValidationError({"organisation_id": "Invalid organisation ID"})
+        #remember validated_data["organisation_id"] is not an id, its an instance! DRF already resolved it to the instance, so there is no need to fetch it manually
 
+        #important to have this safeguard to protect against null value or no organisation field in the request, causing a null value to be updated accidentally in the backend!
+        #here it's important to use serializers.empty instead of None, cuz if the organisation_id field is not passed in, it will just remove organisation_id from validated data rather than putting a null value in that field, causing an accidental update to None!
+        org_field = validated_data.get("organisation_id", serializers.empty)
+
+        #track AppUser update:
+        appUserUpdated = False
+
+        if org_field is not serializers.empty and org_field is not None:
+                instance.appuser.organisation = org_field
+                appUserUpdated = True 
+
+        #we need to single out these updates as these are not Profile related updates, these are on AppUser.
         if "firstname" in validated_data or "lastname" in validated_data:
             if "firstname" in validated_data:
-                instance.appuser.firstname = validated_data["firstname"]
+                instance.appuser.firstname = validated_data.pop("firstname")
             if "lastname" in validated_data:
-                instance.appuser.lastname = validated_data["lastname"]
+                instance.appuser.lastname = validated_data.pop("lastname")
+            appUserUpdated = True 
+                
+        if appUserUpdated:
             instance.appuser.save()
+
+        validated_data.pop("organisation_id", None)
             
-        #we need to call thye parent ModelSerializer.update() to save all fields, not just the organisation saved above!
+        #we need to call thye parent ModelSerializer.update() to save all fields for Profile. Even if validated_data still includes AppUser's model's firstname, etc., they will be silently ignored
         return super().update(instance, validated_data)
+
+    #as we define write only for firstname and lastname, the response data would'nt include those, so we need to override to_representation to include:
+    def to_representation(self, instance):
+        res = super().to_representation(instance)
+        #add firstname and lastname from the related AppUser to the output.
+        res["firstname"] = instance.appuser.firstname
+        res["lastname"] = instance.appuser.lastname
+        return res
+
 
 #read-only show profile
 class ShowProfileOrgSerializer(serializers.ModelSerializer):
-
-    # organisation_details = OrganisationSerializer(source="appuser.organisation", read_only=True)
 
     # appuser_name = AppUserNameSerializer(source="appuser", read_only=True)
     firstname = serializers.CharField(source="appuser.firstname", read_only=True)
@@ -141,7 +148,6 @@ class ShowProfileOrgSerializer(serializers.ModelSerializer):
 
     organisation_id = serializers.IntegerField(source="appuser.organisation.id", read_only=True)
     organisation_name = serializers.CharField(source="appuser.organisation.name", read_only=True)
-
 
     class Meta:
         model = Profile
