@@ -10,6 +10,7 @@ import logging
 import pandas as pd
 import os
 import json
+from users.models import Like
 
 
 #import all the necessary functions for the matching algo
@@ -29,19 +30,26 @@ def build_graph_annoy():
         base_dir = os.path.dirname(os.path.abspath(__file__))
         try:
             
-            #construct the full path to likes_df.csv
-            likes_df = os.path.join(base_dir, "likes_df.csv")
-            #use the global csv file path from settings
-            likes_df = pd.read_csv(likes_df)
-            #process the dataframe
-            print("CSV File Loaded Successfully")
+            #retrieve the likes data from the database.
+            likes_data = Like.objects.select_related("user_from", "user_to").all()
 
-        except FileNotFoundError as e:
-            print(f"File not found: {e}")
-        except Exception as e:
-            print(f"Error loading CSV files: {e}")
+            likes_df = pd.DataFrame.from_records(likes_data.values("user_from_id", "user_to_id", "like_count"))
 
-        # sample_df = likes_df.iloc[:int(len(likes_df) * 0.2)]
+            if likes_df.empty:
+                print("no Like data found in database.")
+                return
+
+            likes_df.rename(columns={
+                "user_from_id": "user_from",
+                "user_to_id": "user_to"
+            }, inplace=True)
+
+
+            print("Like data retrieved from database successfully.")
+
+        except Exception as error:
+            print(f"Error loading Like data: {error}")
+            return
 
         #use the default base_dir
         create_node2vec_annoy(likes_df, embed_dimensions=128, num_trees=10)
@@ -50,6 +58,16 @@ def build_graph_annoy():
 @shared_task
 def run_matching_algo():
     print("entered run matching algo")
+
+    #check for Annoy directory and required files
+    base_dir = os.path.join(os.path.dirname(__file__), "Annoy")
+    ann_file = os.path.join(base_dir, "cluster_global.ann")
+    json_file = os.path.join(base_dir, "global_map.json")
+
+    #if ann file not found, skip the run_matcing_algo early
+    if not (os.path.exists(base_dir) and os.path.exists(ann_file) and os.path.exists(json_file)):
+        print("run_matching_algo() skipped as Annoy directory or required files missing.")
+        return
 
     #connect to Redis
     redis_client = redis.from_url(settings.REDIS_URL, decode_responses=True)
@@ -82,6 +100,8 @@ def run_matching_algo():
     retrieved_user_ids = list(users_queryset.values_list('id', flat=True))
     print(f"users: {retrieved_user_ids}")
 
+    #commented out to enable easier testing (using fewer users) in development mode. 
+    #comment out in production mode!
     # if len(retrieved_user_ids) < 2:
     #     return
 

@@ -2,9 +2,7 @@ from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, BaseUserManager
 from django.conf import settings
 
-# Create your models here.
 
-#Code written by me
 class AppUserManager(BaseUserManager):
     #code based on Django's main project github (guide)'s instructions: https://github.com/django/django/blob/main/django/contrib/auth/models.py#L128
     def create_user(self, email, username, firstname, lastname, password, **extra_fields):
@@ -68,34 +66,6 @@ class AppUser(AbstractBaseUser, PermissionsMixin):
         return f"{self.firstname} {self.lastname}"
 
 
-class Friendship(models.Model):
-    #[self]one to one field cuz one appuser can only have one entry appuser. Note that one row/entry represents one "friend list" for the relevant appuser
-    appuser = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="friendship")
-
-    #symetrical false is to make sure ocan't add themselves as friends. 
-    appfriends = models.ManyToManyField(settings.AUTH_USER_MODEL, blank=True, related_name="appfriends", symmetrical=False ) 
-
-    def __str__(self):
-        return self.appuser.email
-
-    def username(self):
-        return self.appuser.username
-
-class AddRequest(models.Model):
-    #[self] foreignkey rather than one to one cuz one AppUser instance can have many userfrom entries (more like one to many) in the table.
-
-    #settings.Auth User Model means it is linked to the AppUser model defined above. This is an instance of AppUser. Note that when working with ForeignKeys, they are represented as model instances. But when you serialise a model, the ForeignKey is usually serialised to the ID of the related object.
-    user_from = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="user_from")
-
-    user_to = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="user_to")
-
-    date_time = models.DateTimeField(auto_now_add=True)
-
-    ongoing = models.BooleanField(blank=False, default=True, null=False)
-
-    def __str__(self):
-        return self.user_from.email
-
 
 class Profile(models.Model):
 
@@ -143,7 +113,6 @@ class Like(models.Model):
         super().save(*args, **kwargs)
 
 
-
 # may need to link this to user email sufix later
 class Organisation(models.Model):
     name = models.CharField(max_length=100, unique=True)
@@ -161,12 +130,34 @@ class Organisation(models.Model):
 
 
 
+## Note: below code is not in use but may be needed for future development, commenting out for now
+# class Friendship(models.Model):
+#     #[self]one to one field cuz one appuser can only have one entry appuser. Note that one row/entry represents one "friend list" for the relevant appuser
+#     appuser = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="friendship")
 
+#     #symetrical false is to make sure ocan't add themselves as friends. 
+#     appfriends = models.ManyToManyField(settings.AUTH_USER_MODEL, blank=True, related_name="appfriends", symmetrical=False ) 
 
+#     def __str__(self):
+#         return self.appuser.email
 
+#     def username(self):
+#         return self.appuser.username
 
+# class AddRequest(models.Model):
+#     #[self] foreignkey rather than one to one cuz one AppUser instance can have many userfrom entries (more like one to many) in the table.
 
-#my code ends here
+#     #settings.Auth User Model means it is linked to the AppUser model defined above. This is an instance of AppUser. Note that when working with ForeignKeys, they are represented as model instances. But when you serialise a model, the ForeignKey is usually serialised to the ID of the related object.
+#     user_from = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="user_from")
+
+#     user_to = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="user_to")
+
+#     date_time = models.DateTimeField(auto_now_add=True)
+
+#     ongoing = models.BooleanField(blank=False, default=True, null=False)
+
+#     def __str__(self):
+#         return self.user_from.email
 
 
 
