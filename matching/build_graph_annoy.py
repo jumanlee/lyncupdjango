@@ -53,7 +53,7 @@ def create_graph_from_likes(likes_df, reciprocal_weight=0.5):
 #embed_dimensions is the number of dimensions in the embedding space
 #num_trees is the number of trees in the Annoy index
 #this will build graph from likes_df, then run node2vec to get the embeddings and then builds a single annoy index (no clusters for now) and then save the annoy index and user_index_map for retrieval to base_dir Anooy folder.
-def create_node2vec_annoy(likes_df, base_dir=None, embed_dimensions=128, num_trees=10):
+def create_node2vec_annoy(likes_df, base_dir=None, embed_dimensions=256, num_trees=50):
 
     if likes_df.empty:
         print("likes_df is empty")
@@ -72,10 +72,10 @@ def create_node2vec_annoy(likes_df, base_dir=None, embed_dimensions=128, num_tre
     node2vec = Node2Vec(
         graph,
         dimensions=embed_dimensions,
-        walk_length=10,
-        num_walks=20,
-        p=1.0,
-        q=1.0, #1.0 and 1.0 is effectively deepwalk, use this for now
+        walk_length=40,
+        num_walks=80,
+        p=0.5,
+        q=10, 
         weight_key="weight",
         workers=1 #this can be increase for parallele processing
     )
