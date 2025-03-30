@@ -26,39 +26,38 @@ logger = logging.getLogger(__name__)
 #it only registers the task with Celery's task registry.
 @shared_task
 def build_graph_annoy():
-        try:
-            
-            #retrieve the likes data from the database.
-            likes_data = Like.objects.select_related("user_from", "user_to").all()
+    try:
+        #retrieve the likes data from the database.
+        likes_data = Like.objects.select_related("user_from", "user_to").all()
 
-            likes_df = pd.DataFrame.from_records(likes_data.values("user_from_id", "user_to_id", "like_count"))
+        likes_df = pd.DataFrame.from_records(likes_data.values("user_from_id", "user_to_id", "like_count"))
 
-            if likes_df.empty:
-                print("No Like data found in database. Injecting dummy data for testing.")
+        if likes_df.empty:
+            print("No Like data found in database. Injecting dummy data for testing.")
 
-                #inject dummy likes from 3 users
-                dummy_data = {
-                    "user_from": [1, 1, 2],
-                    "user_to":   [2, 3, 3],
-                    "like_count": [1, 3, 2]
-                }
-                likes_df = pd.DataFrame(dummy_data)
-            else:
-                #Rename columns if real data is used
-                likes_df.rename(columns={
-                    "user_from_id": "user_from",
-                    "user_to_id": "user_to"
-                }, inplace=True)
+            #inject dummy likes from 3 users
+            dummy_data = {
+                "user_from": [1, 1, 2],
+                "user_to":   [2, 3, 3],
+                "like_count": [1, 3, 2]
+            }
+            likes_df = pd.DataFrame(dummy_data)
+        else:
+            #Rename columns if real data is used
+            likes_df.rename(columns={
+                "user_from_id": "user_from",
+                "user_to_id": "user_to"
+            }, inplace=True)
 
 
-            print("Like data retrieved from database successfully.")
+        print("Like data retrieved successfully.")
 
-        except Exception as error:
-            print(f"Error loading Like data: {error}")
-            return
+    except Exception as error:
+        print(f"Error loading Like data: {error}")
+        return
 
-        #use the default base_dir
-        create_node2vec_annoy(likes_df, embed_dimensions=128, num_trees=10)
+    #use the default base_dir
+    create_node2vec_annoy(likes_df, embed_dimensions=128, num_trees=10)
 
 
 @shared_task
