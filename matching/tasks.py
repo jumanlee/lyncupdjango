@@ -26,8 +26,6 @@ logger = logging.getLogger(__name__)
 #it only registers the task with Celery's task registry.
 @shared_task
 def build_graph_annoy():
-        #get the directory of the current Python file
-        base_dir = os.path.dirname(os.path.abspath(__file__))
         try:
             
             #retrieve the likes data from the database.
@@ -36,13 +34,21 @@ def build_graph_annoy():
             likes_df = pd.DataFrame.from_records(likes_data.values("user_from_id", "user_to_id", "like_count"))
 
             if likes_df.empty:
-                print("no Like data found in database.")
-                return
+                print("No Like data found in database. Injecting dummy data for testing.")
 
-            likes_df.rename(columns={
-                "user_from_id": "user_from",
-                "user_to_id": "user_to"
-            }, inplace=True)
+                #inject dummy likes from 3 users
+                dummy_data = {
+                    "user_from": [1, 1, 2],
+                    "user_to":   [2, 3, 3],
+                    "like_count": [1, 3, 2]
+                }
+                likes_df = pd.DataFrame(dummy_data)
+            else:
+                #Rename columns if real data is used
+                likes_df.rename(columns={
+                    "user_from_id": "user_from",
+                    "user_to_id": "user_to"
+                }, inplace=True)
 
 
             print("Like data retrieved from database successfully.")
