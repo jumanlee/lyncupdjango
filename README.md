@@ -1,10 +1,11 @@
-# LyncUp
+## LyncUp
 
 **LyncUp** is a full-stack web app built with Django, React, PostgreSQL, Redis, Celery, and Docker.  
 It connects users in small social chat groups based on simple liking behaviour and helps simulate spontaneous social interactions.
----
 
-## LyncUp's frontend React app's codebase is here: https://github.com/jumanlee/lyncupreact
+
+## LyncUp's frontend React app's codebase is here: 
+https://github.com/jumanlee/lyncupreact
 
 ## Pre-requisite
 Please have Docker Desktop ready in the background.
