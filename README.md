@@ -44,16 +44,23 @@ This will:
 
 - Automatically attempt to load fixtures from lyncup/fixtures/initial_data.json for development/testing (can be manually removed or commented out to avoid data overwrite, see caution in .yml file).
 
-## Step 3: If you wish to stop Django app temporarily (containers still exist):
+## Step 3:
+Load all initial data:
+```
+docker-compose exec django python manage.py loaddata lyncup/fixtures/initial_data.json
+```
+Once the data is loaded, go to Django admin, click "Periodic tasks" on the left panel, and double check that Build Clusters and Annoy has been set to "Enabled". This periodic task is crucial as it creates the Annoy files that the matching algorithm relies on to match users.
+
+## If you wish to stop Django app temporarily (containers still exist):
 ```
 docker-compose stop
 ```
 
-## Step 4: If you want to start Django app after stopping:
+## If you want to start Django app after stopping:
 ```
 docker-compose start
 ```
-## Step 5: If you wish to tear everything down (deletes containers and data unless volumes are persisted):
+## If you wish to tear everything down (deletes containers and data unless volumes are persisted):
 ```
 docker-compose down
 ```
