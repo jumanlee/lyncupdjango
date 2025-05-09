@@ -153,6 +153,14 @@ class ShowProfileOrgSerializer(serializers.ModelSerializer):
         model = Profile
         fields = ["user_id", "firstname", "lastname", "aboutme", 'citytown', 'country', 'age', 'gender', "organisation_id", "organisation_name"]
 
+class AddRequestSerializer(serializers.ModelSerializer):
+        class Meta:
+            model = AddRequest
+            fields = ["user_from", "user_to"]
+        
+
+
+
 
 
 

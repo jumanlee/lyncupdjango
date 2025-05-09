@@ -173,7 +173,6 @@ class ShowMultiProfilesView(generics.ListAPIView):
         return Profile.objects.filter(appuser__id__in=user_ids)
 
 
-
 #find organisation in the database, which may return a collection. generics.RetrieveAPIView is not suitable as we will give a partial keyword DRF will then return a collection of related companies. I need to override, so generics + mixins is better.
 class SearchOrgView(generics.GenericAPIView, mixins.ListModelMixin):
     permission_classes = [IsAuthenticated]
@@ -202,6 +201,26 @@ class SearchOrgView(generics.GenericAPIView, mixins.ListModelMixin):
 
     #     serializer = self.get_serializer(queryset, many=True)
     #     return Response(serializer.data)
+
+class AddRequestView(generics.GenericAPIView, mixins.CreateModelMixin):
+    permission_classes = [IsAuthenticated]
+    serializer_class = AddRequestSerializer
+
+    def post(self, request, *args, **kwargs):
+        return self.create(request, *args, **kwargs)
+
+
+class ShowSentRequestsView(generics.GenericAPIView, mixins.ListModelMixin):
+    permission_classes = [IsAuthenticated]
+    serializer_class = AddRequestSerializer
+
+    #get data source
+    def get_queryset(self):
+        return AddRequest.objects.filter(user_to=self.request.user)
+
+    #get is executed and called by GenericAPIVIew. .get then calls get_queryset() to get the data source. /list is provided by mixins.ListModelMixin
+    def get(self, request, *args, **kwargs):
+        return self.list(request, *args, **kwargs)
 
 
 

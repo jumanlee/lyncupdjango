@@ -58,6 +58,7 @@ INSTALLED_APPS = [
     'users',
     'chat',
     'matching',
+    'direct_message',
 
 
 

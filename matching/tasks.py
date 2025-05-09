@@ -1,7 +1,6 @@
 from celery import shared_task
 # from chat.utils import create_chat_room
 from asgiref.sync import async_to_sync
-from django.contrib.auth import get_user_model
 from channels.layers import get_channel_layer
 from users.models import AppUser
 import redis
@@ -28,6 +27,7 @@ logger = logging.getLogger(__name__)
 def build_graph_annoy():
     try:
         #retrieve the likes data from the database.
+        #note: may have to combine .iterator() + batching (stream and chunk) to balance speed and memory when user count gets into the millions as using df like this loads everything into memory.
         likes_data = Like.objects.select_related("user_from", "user_to").all()
 
         likes_df = pd.DataFrame.from_records(likes_data.values("user_from_id", "user_to_id", "like_count"))
@@ -78,6 +78,7 @@ def run_matching_algo():
     redis_client = redis.from_url(settings.REDIS_URL, decode_responses=True)
 
     #get all user id's in queue in redis
+    # redis_client.smembers("queue") returns strings because Redis stores everything as strings by default, even if insert numbers.
     try:
         membersIdSet = redis_client.smembers("queue")
     except Exception as error:
@@ -87,7 +88,6 @@ def run_matching_algo():
     if not membersIdSet:
         print("queue is empty (from task.py)")
         return
-
 
     #ensuring user_ids are int
     try:
@@ -107,8 +107,8 @@ def run_matching_algo():
 
     #commented out to enable easier testing (using fewer users) in development mode. 
     #comment out in production mode!
-    # if len(retrieved_user_ids) < 2:
-    #     return
+    if len(retrieved_user_ids) < 2:
+        return
 
     logger.info("user_ids length")
     logger.info(len(retrieved_user_ids))
@@ -132,11 +132,11 @@ def run_matching_algo():
     #remember when this is returned, it is a tuple as two values are returned!
     print(f"matched_groups: {matched_groups}")
 
-    ##this needs amending for robustness
-    removed_ids = redis_client.smembers("rooms")
-    print(f"removed_ids: {removed_ids}")
-    if removed_ids:
-        redis_client.srem("rooms", *removed_ids)
+    # ##this needs amending for robustness
+    # removed_ids = redis_client.smembers("rooms")
+    # print(f"removed_ids: {removed_ids}")
+    # if removed_ids:
+    #     redis_client.srem("rooms", *removed_ids)
 
 
     # get the channel layer
@@ -179,6 +179,8 @@ def run_matching_algo():
     if success_matched_userIds:
         print(f"success_matched_userIds is not empty:{success_matched_userIds}")
         redis_client.srem("queue",*success_matched_userIds)
+
+#note for future developoment: if more than one worker is used, consider to add a lock (e.g. via SETNX or redlock) to prevent two Celery workers from running run_matching_algo() at the same time. Otherwise, risk double-matching or room assignment conflicts under concurrency.
             
 
 

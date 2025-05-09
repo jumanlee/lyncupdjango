@@ -34,9 +34,11 @@ django_asgi_app = get_asgi_application()
 # Import websocket_urlpatterns with aliases to prevent conflicts
 from chat.routing import websocket_urlpatterns as chat_websocket_urlpatterns
 from matching.routing import websocket_urlpatterns as matching_websocket_urlpatterns
+from direct_message.routing import websocket_urlpatterns as direct_message_websocket_urlpatterns
 
 
-combined_websocket_urlpatterns = chat_websocket_urlpatterns + matching_websocket_urlpatterns
+combined_websocket_urlpatterns = chat_websocket_urlpatterns + matching_websocket_urlpatterns + direct_message_websocket_urlpatterns
+
 
 application = ProtocolTypeRouter(
     {
