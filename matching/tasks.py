@@ -62,7 +62,6 @@ def build_graph_annoy():
 
 @shared_task
 def run_matching_algo():
-    print("entered run matching algo")
 
     #check for Annoy directory and required files
     base_dir = os.path.join(os.path.dirname(__file__), "Annoy")
@@ -77,110 +76,131 @@ def run_matching_algo():
     #connect to Redis
     redis_client = redis.from_url(settings.REDIS_URL, decode_responses=True)
 
-    #get all user id's in queue in redis
-    # redis_client.smembers("queue") returns strings because Redis stores everything as strings by default, even if insert numbers.
-    try:
-        membersIdSet = redis_client.smembers("queue")
-    except Exception as error:
-        print(error)
-        membersIdSet = set()
+    #when multiple celery workers are used: added a lock (via SETNX) to prevent two Celery workers from running run_matching_algo() at the same time. Otherwise, risk double-matching or room assignment conflicts under concurrency.
 
-    if not membersIdSet:
-        print("queue is empty (from task.py)")
+    lock_key = "run_matching_algo_lock"
+    lock_ttl = 60  # seconds; adjust to max expected runtime
+
+    #NX = "Only set lock if Not eXists"
+    #EX = set an expiration time for the lock
+    # If the key did not exist, Redis executes the SET key value NX EX ttl command and returns the string reply "OK".
+    # If the key already exists, the NX flag prevents the set, and Redis returns a nil reply (i.e. “no value”)
+    got_lock = redis_client.set(lock_key, "1", nx=True, ex=lock_ttl)
+    if not got_lock:
+        print("Another worker is already running run_matching_algo, skipping.")
         return
-
-    #ensuring user_ids are int
+    
     try:
-        user_ids = [int(member_id) for member_id in membersIdSet]
-    except ValueError as error:
-        print(error)
-        user_ids = []
-
-    #to double check if these ids actually do exist.
-    #users is in QuerySet, not yet hit the database
-    users_queryset = AppUser.objects.filter(id__in=user_ids)
-
-    #convert to list, this is when Queryset hits the database due to both list and values_list
-    #flat true makes the tuples into plain list
-    retrieved_user_ids = list(users_queryset.values_list('id', flat=True))
-    print(f"users: {retrieved_user_ids}")
-
-    #commented out to enable easier testing (using fewer users) in development mode. 
-    #comment out in production mode!
-    if len(retrieved_user_ids) < 2:
-        return
-
-    logger.info("user_ids length")
-    logger.info(len(retrieved_user_ids))
-
-    #this automatically initialises "global" and "leftover" queues
-    queue_manager = ClusterQueueManager()
-
-    for user_id in retrieved_user_ids:
-        queue_manager.add("global", int(user_id))
-    
-    #run the batch matching algo
-    grouped_users = run_batch_matching(queue_manager)
-    print(f"grouped_users: {grouped_users}")
-    
-    #distribute grouped users to rooms
-    #format of matched_groups
-    # matched_groups = [{"room_id": 123, "user_ids": [1,2,3,4]}, {"room_id": 555, "user_ids": [5,6,7,8]}]
-    matched_groups, users_in_matched_groups = distribute_rooms(grouped_users, redis_client)
+        print("entered run matching algo")
 
 
-    #remember when this is returned, it is a tuple as two values are returned!
-    print(f"matched_groups: {matched_groups}")
+        #get all user id's in queue in redis
+        # redis_client.smembers("queue") returns strings because Redis stores everything as strings by default, even if insert numbers.
+        try:
+            membersIdSet = redis_client.smembers("queue")
+        except Exception as error:
+            print(error)
+            membersIdSet = set()
 
-    # ##this needs amending for robustness
-    # removed_ids = redis_client.smembers("rooms")
-    # print(f"removed_ids: {removed_ids}")
-    # if removed_ids:
-    #     redis_client.srem("rooms", *removed_ids)
+        if not membersIdSet:
+            print("queue is empty (from task.py)")
+            return
+
+        #ensuring user_ids are int
+        try:
+            user_ids = [int(member_id) for member_id in membersIdSet]
+        except ValueError as error:
+            print(error)
+            user_ids = []
+
+        #to double check if these ids actually do exist.
+        #users is in QuerySet, not yet hit the database
+        users_queryset = AppUser.objects.filter(id__in=user_ids)
+
+        #convert to list, this is when Queryset hits the database due to both list and values_list
+        #flat true makes the tuples into plain list
+        retrieved_user_ids = list(users_queryset.values_list('id', flat=True))
+        print(f"users: {retrieved_user_ids}")
+
+        #commented out to enable easier testing (using fewer users) in development mode. 
+        #comment out in production mode!
+        if len(retrieved_user_ids) < 2:
+            return
+
+        logger.info("user_ids length")
+        logger.info(len(retrieved_user_ids))
+
+        #this automatically initialises "global" and "leftover" queues
+        queue_manager = ClusterQueueManager()
+
+        for user_id in retrieved_user_ids:
+            queue_manager.add("global", int(user_id))
+        
+        #run the batch matching algo
+        grouped_users = run_batch_matching(queue_manager)
+        print(f"grouped_users: {grouped_users}")
+        
+        #distribute grouped users to rooms
+        #format of matched_groups
+        # matched_groups = [{"room_id": 123, "user_ids": [1,2,3,4]}, {"room_id": 555, "user_ids": [5,6,7,8]}]
+        matched_groups, users_in_matched_groups = distribute_rooms(grouped_users, redis_client)
 
 
-    # get the channel layer
-    channel_layer = get_channel_layer()
+        #remember when this is returned, it is a tuple as two values are returned!
+        print(f"matched_groups: {matched_groups}")
 
-    success_matched_userIds = []
-
-    # matched_groups in this format:
-    #  Tuple[List[Dict[str, object]], List[int]]
-    # [
-    #     {"room_id": 5, "user_ids": [1, 2, 3, 4]},
-    #     {"room_id": 2, "user_ids": [5, 6, 7, 8]}
-    # ]
+        # ##this needs amending for robustness
+        # removed_ids = redis_client.smembers("rooms")
+        # print(f"removed_ids: {removed_ids}")
+        # if removed_ids:
+        #     redis_client.srem("rooms", *removed_ids)
 
 
-    for group in matched_groups:
-        room_id = group["room_id"]
-        user_ids = group["user_ids"]
+        # get the channel layer
+        channel_layer = get_channel_layer()
 
-        for user_id in user_ids:
-            try:
-                async_to_sync(channel_layer.group_send)(
-                    f'user_queue_{user_id}',
-                    {
-                        #Note: When Celery task sends a message via the channel layer, it doesn't need direct access to the consumer or its methods. Instead, it uses the channel layer as an intermediary to broadcast messages to any consumers that are subscribed to the relevant group.
-                        "type": "send_room_id",
-                        "room_id": room_id,
-                    }
-                )
+        success_matched_userIds = []
 
-                success_matched_userIds.append(user_id)
+        # matched_groups in this format:
+        #  Tuple[List[Dict[str, object]], List[int]]
+        # [
+        #     {"room_id": 5, "user_ids": [1, 2, 3, 4]},
+        #     {"room_id": 2, "user_ids": [5, 6, 7, 8]}
+        # ]
 
-                
-            except Exception as error:
-                print(error)
-    #srem command removes one or more members from a set.
-    #*unpacks the elements of the collection, so instead of passing the collection as one argument, it passes each element of the collection as a separate argument
-    #here is to remove the successfully matched users from the Redis queue.
-    #only remove if its not empty:
-    if success_matched_userIds:
-        print(f"success_matched_userIds is not empty:{success_matched_userIds}")
-        redis_client.srem("queue",*success_matched_userIds)
 
-#note for future developoment: if more than one worker is used, consider to add a lock (e.g. via SETNX or redlock) to prevent two Celery workers from running run_matching_algo() at the same time. Otherwise, risk double-matching or room assignment conflicts under concurrency.
+        for group in matched_groups:
+            room_id = group["room_id"]
+            user_ids = group["user_ids"]
+
+            for user_id in user_ids:
+                try:
+                    async_to_sync(channel_layer.group_send)(
+                        f'user_queue_{user_id}',
+                        {
+                            #Note: When Celery task sends a message via the channel layer, it doesn't need direct access to the consumer or its methods. Instead, it uses the channel layer as an intermediary to broadcast messages to any consumers that are subscribed to the relevant group.
+                            "type": "send_room_id",
+                            "room_id": room_id,
+                        }
+                    )
+
+                    success_matched_userIds.append(user_id)
+
+                    
+                except Exception as error:
+                    print(error)
+        #srem command removes one or more members from a set.
+        #*unpacks the elements of the collection, so instead of passing the collection as one argument, it passes each element of the collection as a separate argument
+        #here is to remove the successfully matched users from the Redis queue.
+        #only remove if its not empty:
+        if success_matched_userIds:
+            print(f"success_matched_userIds is not empty:{success_matched_userIds}")
+            redis_client.srem("queue",*success_matched_userIds)
+    finally:
+        #release the lock so others can pick up next time
+        redis_client.delete(lock_key)
+
+
             
 
 
