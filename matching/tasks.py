@@ -33,7 +33,7 @@ def build_graph_annoy():
         likes_df = pd.DataFrame.from_records(likes_data.values("user_from_id", "user_to_id", "like_count"))
 
         if likes_df.empty:
-            print("No Like data found in database. Injecting dummy data for testing.")
+            logger.info("No Like data found in database. Injecting dummy data for testing.")
 
             #inject dummy likes from 3 users
             dummy_data = {
@@ -50,10 +50,10 @@ def build_graph_annoy():
             }, inplace=True)
 
 
-        print("Like data retrieved successfully.")
+        logger.info("Like data retrieved successfully.")
 
     except Exception as error:
-        print(f"Error loading Like data: {error}")
+        logger.error("Error loading Like data: %s", error)
         return
 
     #use the default base_dir
@@ -70,7 +70,9 @@ def run_matching_algo():
 
     #if ann file not found, skip the run_matcing_algo early
     if not (os.path.exists(base_dir) and os.path.exists(ann_file) and os.path.exists(json_file)):
-        print("run_matching_algo() skipped as Annoy directory or required files missing.")
+        logger.warning(
+            "run_matching_algo skipped: Annoy directory or required files missing."
+        )
         return
 
     #connect to Redis
@@ -87,11 +89,11 @@ def run_matching_algo():
     # If the key already exists, the NX flag prevents the set, and Redis returns a nil reply (i.e. “no value”)
     got_lock = redis_client.set(lock_key, "1", nx=True, ex=lock_ttl)
     if not got_lock:
-        print("Another worker is already running run_matching_algo, skipping.")
+        logger.info("Another worker is already running run_matching_algo; skipping this round.")
         return
     
     try:
-        print("entered run matching algo")
+        logger.info("run_matching_algo started")
 
 
         #get all user id's in queue in redis
@@ -99,18 +101,18 @@ def run_matching_algo():
         try:
             membersIdSet = redis_client.smembers("queue")
         except Exception as error:
-            print(error)
+            logger.error("Error fetching queue members: %s", error)
             membersIdSet = set()
 
         if not membersIdSet:
-            print("queue is empty (from task.py)")
+            logger.debug("Queue is empty—nothing to match.")
             return
 
         #ensuring user_ids are int
         try:
             user_ids = [int(member_id) for member_id in membersIdSet]
         except ValueError as error:
-            print(error)
+            logger.error("Non-integer ID in queue: %s", error)
             user_ids = []
 
         #to double check if these ids actually do exist.
@@ -120,15 +122,14 @@ def run_matching_algo():
         #convert to list, this is when Queryset hits the database due to both list and values_list
         #flat true makes the tuples into plain list
         retrieved_user_ids = list(users_queryset.values_list('id', flat=True))
-        print(f"users: {retrieved_user_ids}")
+        logger.info("Found %d valid users in queue", len(retrieved_user_ids))
 
         #commented out to enable easier testing (using fewer users) in development mode. 
         #comment out in production mode!
         if len(retrieved_user_ids) < 2:
+            logger.debug("Not enough users to match (need ≥2).")
             return
 
-        logger.info("user_ids length")
-        logger.info(len(retrieved_user_ids))
 
         #this automatically initialises "global" and "leftover" queues
         queue_manager = ClusterQueueManager()
@@ -138,7 +139,7 @@ def run_matching_algo():
         
         #run the batch matching algo
         grouped_users = run_batch_matching(queue_manager)
-        print(f"grouped_users: {grouped_users}")
+        logger.debug("Grouped users: %s", grouped_users)
         
         #distribute grouped users to rooms
         #format of matched_groups
@@ -147,7 +148,7 @@ def run_matching_algo():
 
 
         #remember when this is returned, it is a tuple as two values are returned!
-        print(f"matched_groups: {matched_groups}")
+        logger.info("Matched groups: %s", matched_groups)
 
         # ##this needs amending for robustness
         # removed_ids = redis_client.smembers("rooms")
@@ -186,19 +187,21 @@ def run_matching_algo():
 
                     success_matched_userIds.append(user_id)
 
-                    
                 except Exception as error:
-                    print(error)
+                    logger.error("Error sending to user %d: %s", user_id, error)
         #srem command removes one or more members from a set.
         #*unpacks the elements of the collection, so instead of passing the collection as one argument, it passes each element of the collection as a separate argument
         #here is to remove the successfully matched users from the Redis queue.
         #only remove if its not empty:
         if success_matched_userIds:
-            print(f"success_matched_userIds is not empty:{success_matched_userIds}")
             redis_client.srem("queue",*success_matched_userIds)
+            logger.info("Removed matched users from queue: %s", success_matched_userIds)
+            
     finally:
+        #use finally as we NEED to delete the lock even if an error occurs. Finally executes no matter what.
         #release the lock so others can pick up next time
         redis_client.delete(lock_key)
+        logger.info("run_matching_algo completed, lock released.")
 
 
             
