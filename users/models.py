@@ -42,6 +42,7 @@ class AppUser(AbstractBaseUser, PermissionsMixin):
     firstname = models.CharField(max_length=150, blank=False, null=False)
     lastname = models.CharField(max_length=150, blank=False, null=False)
     is_staff = models.BooleanField(default=False)
+    is_verified = models.BooleanField(default=False)
     #is_active is built-in
     is_active = models.BooleanField(default=True)
     is_oneline = models.BooleanField(default=False)

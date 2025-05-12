@@ -7,6 +7,7 @@ from . import views
 urlpatterns = [
     path("testapi/", views.TestApi.as_view(), name='testapi_api'),
     path('register/', views.Register.as_view(), name='register_api'),
+    path("verify-email/<uidb64>/<token>/", VerifyEmailView.as_view(), name="verify-email"),
     path('like/', views.LikeView.as_view(), name='like_api'),
     path('unlike/', views.UnlikeView.as_view(), name='unlike_api'),
     path("updateprofile/", views.UpdateProfileView.as_view(), name='updateprofile_api'),

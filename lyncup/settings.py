@@ -275,6 +275,24 @@ SIMPLE_JWT = {
     "SLIDING_TOKEN_REFRESH_SERIALIZER": "rest_framework_simplejwt.serializers.TokenRefreshSlidingSerializer",
 }
 
+#for email verification
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+
+#can swap for below for local testing and Django will just print the email body to the terminal:
+# EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+
+EMAIL_HOST = config("EMAIL_HOST", default="smtp.gmail.com")
+EMAIL_PORT = 587
+EMAIL_HOST_USER = config("EMAIL_HOST_USER")
+EMAIL_HOST_PASSWORD = config("EMAIL_HOST_PASSWORD")
+EMAIL_USE_TLS = True
+
+#base URL where React frontend handles email verification
+#It forms the beginning of the link the user clicks to confirm their email, like this:
+#http://localhost:5173/verify-email/<uidb64>/<token>
+FRONTEND_VERIFY_URL = "http://localhost:5173/verify-email"  
+
+
 
 
 

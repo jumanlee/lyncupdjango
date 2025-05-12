@@ -14,6 +14,13 @@ from django.core.exceptions import ValidationError
 from django.http import Http404
 from .models import *
 from .serializers import *
+from .utils import send_verification_email
+from django.utils.http import urlsafe_base64_decode
+from django.utils.encoding import force_str
+from django.contrib.auth.tokens import default_token_generator
+from rest_framework import permissions
+from rest_framework_simplejwt.authentication import JWTAuthentication
+
 
 #no need for Login view as we're using JWT and it's already handled by djangorestframework-simplejwt. see main lyncup folder's urls.py
 
@@ -25,6 +32,11 @@ class TestApi(APIView):
     def get(self, request, *args, **kwargs):
         return Response({"message": "API access successful!"}, status=200) 
 
+#anywhere we want to block unverified accounts, add this permission
+class IsVerified(permissions.BasePermission):
+    def has_permission(self, request, view):
+        return bool(request.user and request.user.is_authenticated and request.user.is_verified)
+
 #register users
 class Register(generics.GenericAPIView, mixins.CreateModelMixin):
 
@@ -35,10 +47,41 @@ class Register(generics.GenericAPIView, mixins.CreateModelMixin):
         #.create comes from Mixin
         return self.create(request, *args, **kwargs)
 
+    #perform_create is called by self.create above
+    def perform_create(self, serializer):
+        user = serializer.save()         #creates AppUser + Profile
+        send_verification_email(self.request, user)
+
+class VerifyEmailView(APIView):
+    #authentication_classes determines who the user is by reading tokens or session info from the request and setting request.user.
+    #permission_classes decides whether that user is allowed to access the view, based on rules like IsAuthenticated or custom conditions.
+    authentication_classes = []       
+    permission_classes = []
+
+    def get(self, request, uidb64, token, *args, **kwargs):
+        try:
+            #urlsafe_base64_decode(uidb64) this decodes that base64 string back into bytes
+            #force_str(...) this converts bytes back into a string
+            uid = force_str(urlsafe_base64_decode(uidb64))
+
+            #get_user_model() looks at AUTH_USER_MODEL in settings.py, so get_user_model() returns your custom AppUser class, not Django’s default User
+            user = get_user_model().objects.get(pk=uid)
+        except (TypeError, ValueError, OverflowError, get_user_model().DoesNotExist):
+            return Response({"detail": "Invalid link"}, status=status.HTTP_400_BAD_REQUEST)
+
+        if default_token_generator.check_token(user, token):
+            if not user.is_verified:
+                user.is_verified = True
+                user.save()
+            return Response({"detail": "Email verified"}, status=status.HTTP_200_OK)
+
+        return Response({"detail": "Invalid or expired link"}, status=status.HTTP_400_BAD_REQUEST)
+
 
 class LikeView(APIView):
 
-    permission_classes = [IsAuthenticated]
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated, IsVerified]
 
     #we are using APIVIew here instead of (generics.GenericAPIView, mixins.CreateModelMixin) because the like instance is often not unique (e.g if the row already exists, we need to increment the value of like count). unique_together that is enforced inside serializer.is_valid and on the model level (we defined it), called by .create (from mixins.CreateModelMixin would prevent that) Hence we need to use custom APIView instead, much easier to handle it this way. That means we don't need to define a serializer class (serializer_class = LikeSerializer) here and can just bypass serializer. But we still need serializer in place to ensure that the incoming request is in the right format.
 
@@ -76,7 +119,8 @@ class LikeView(APIView):
 #this is mainly to reverse a like that has been made during the same chat session when a like was made.
 class UnlikeView(APIView):
 
-    permission_classes = [IsAuthenticated]
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated, IsVerified]
 
     def post(self, request, *args, **kwargs):
         #validate data, can share serializer with LikeView as there's no change in format
@@ -108,7 +152,8 @@ class UnlikeView(APIView):
 
 #I know we could alternatively use generics.UpdateAPIView alone instead which means I don't need to use Mixin as its included but I want more flexibility to customise, such as logging different error messages as below. I prefer using these instead.
 class UpdateProfileView(generics.GenericAPIView, mixins.UpdateModelMixin):
-    permission_classes = [IsAuthenticated]
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated, IsVerified]
     serializer_class = UpdateProfileOrgSerializer
 
     #get_objects is called by automatically by update(), (which is automatically called by put, if using UpdateAPIView), and partial_update(), (automatically called if using UpdateAPIView), from UpdateModelMixin. The reason I override this is because the default behaviour is it would try to grab the pk in the url and then look up the relevant role in model. I don't want that, I want to eliminate the chance of the user sending the request to possibly change other users' profiles.
@@ -141,8 +186,8 @@ class UpdateProfileView(generics.GenericAPIView, mixins.UpdateModelMixin):
 
 #to show user their own profile info
 class ShowProfileView(generics.RetrieveAPIView):
-    
-    permission_classes = [IsAuthenticated]
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated, IsVerified]
 
     serializer_class = ShowProfileOrgSerializer
     queryset = Profile.objects.all()
@@ -154,7 +199,8 @@ class ShowProfileView(generics.RetrieveAPIView):
 
 #to query multiple profiles
 class ShowMultiProfilesView(generics.ListAPIView):
-    permission_classes = [IsAuthenticated]
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated, IsVerified]
     serializer_class = ShowProfileOrgSerializer
 
     def get_queryset(self):
@@ -175,7 +221,8 @@ class ShowMultiProfilesView(generics.ListAPIView):
 
 #find organisation in the database, which may return a collection. generics.RetrieveAPIView is not suitable as we will give a partial keyword DRF will then return a collection of related companies. I need to override, so generics + mixins is better.
 class SearchOrgView(generics.GenericAPIView, mixins.ListModelMixin):
-    permission_classes = [IsAuthenticated]
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated, IsVerified]
     serializer_class = OrganisationSerializer
 
     def get_queryset(self):
@@ -203,7 +250,8 @@ class SearchOrgView(generics.GenericAPIView, mixins.ListModelMixin):
     #     return Response(serializer.data)
 
 class AddRequestView(generics.GenericAPIView, mixins.CreateModelMixin):
-    permission_classes = [IsAuthenticated]
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated, IsVerified]
     serializer_class = AddRequestSerializer
 
     def post(self, request, *args, **kwargs):
@@ -211,7 +259,8 @@ class AddRequestView(generics.GenericAPIView, mixins.CreateModelMixin):
 
 
 class ShowSentRequestsView(generics.GenericAPIView, mixins.ListModelMixin):
-    permission_classes = [IsAuthenticated]
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated, IsVerified]
     serializer_class = AddRequestSerializer
 
     #get data source
