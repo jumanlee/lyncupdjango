@@ -293,7 +293,8 @@ EMAIL_USE_TLS = True
 #base URL where React frontend handles email verification
 #It forms the beginning of the link the user clicks to confirm their email, like this:
 #http://localhost:5173/verify-email/<uidb64>/<token>
-FRONTEND_VERIFY_URL = "http://localhost:5173/verify-email"  
+# FRONTEND_VERIFY_URL = "http://localhost:5173/verify-email"  
+FRONTEND_VERIFY_URL = "http://localhost:8080/api/users/verify-email"
 
 
 
