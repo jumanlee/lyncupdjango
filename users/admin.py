@@ -10,7 +10,7 @@ class CustomUserAdmin(UserAdmin):
     model = AppUser
 
     #what fields to display
-    list_display = ('id', 'email', 'username', 'firstname', 'lastname', 'organisation', 'is_staff', 'is_active')
+    list_display = ('id', 'email', 'username', 'firstname', 'lastname', 'organisation', 'is_staff', 'is_active', 'is_verified')
 
     #what fields to filter by in the admin panel
     list_filter = ('is_staff', 'is_active')

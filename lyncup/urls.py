@@ -25,6 +25,8 @@ from rest_framework_simplejwt.views import (
     TokenRefreshView,
 )
 
+from users.views import VerifiedTokenObtainPairView
+
 urlpatterns = [
     path('admin/', admin.site.urls),
 
@@ -34,7 +36,8 @@ urlpatterns = [
     path('', lambda request: HttpResponse("Welcome to the LyncUp API backend.", content_type="application/json")),
 
     #for JWT tokens: https://django-rest-framework-simplejwt.readthedocs.io/en/latest/getting_started.html
-    path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
+    # path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
+    path('api/token/', VerifiedTokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
 
     path('api/users/', include('users.urls')),

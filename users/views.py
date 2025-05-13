@@ -20,6 +20,8 @@ from django.utils.encoding import force_str
 from django.contrib.auth.tokens import default_token_generator
 from rest_framework import permissions
 from rest_framework_simplejwt.authentication import JWTAuthentication
+from rest_framework_simplejwt.views import TokenObtainPairView
+from rest_framework.permissions import AllowAny
 
 
 #no need for Login view as we're using JWT and it's already handled by djangorestframework-simplejwt. see main lyncup folder's urls.py
@@ -39,6 +41,16 @@ class IsVerified(permissions.BasePermission):
 
 #register users
 class Register(generics.GenericAPIView, mixins.CreateModelMixin):
+    #skips all auth backend
+    #we have a global default of JWTAuthentication in settings.py ('rest_framework_simplejwt.authentication.JWTAuthentication'), because we didn’t override it on Register view, DRF still tries to authenticate the incoming request with whatever’s in Authorization header, fails, and returns 401 before perform_create() ever runs.
+    #so DRF would try to parse a token on every request—including register
+    #and reject with 401 if the header is missing or invalid.
+    #by setting authentication_classes to an empty list, we tell DRF: “Don’t run any authentication backends here.”
+    authentication_classes = []
+
+    #permission_classes must be explicit; an empty list would mean “no permissions defined”
+    #(which by default denies all). AllowAny lets anonymous users create accounts.          
+    permission_classes = [AllowAny]
 
     #serializer_class comes from GenericAPIView
     serializer_class = RegisterSerializer
@@ -52,11 +64,14 @@ class Register(generics.GenericAPIView, mixins.CreateModelMixin):
         user = serializer.save()         #creates AppUser + Profile
         send_verification_email(self.request, user)
 
+class VerifiedTokenObtainPairView(TokenObtainPairView):
+    serializer_class = VerifiedTokenObtainPairSerializer
+
 class VerifyEmailView(APIView):
     #authentication_classes determines who the user is by reading tokens or session info from the request and setting request.user.
     #permission_classes decides whether that user is allowed to access the view, based on rules like IsAuthenticated or custom conditions.
     authentication_classes = []       
-    permission_classes = []
+    permission_classes = [AllowAny]
 
     def get(self, request, uidb64, token, *args, **kwargs):
         try:

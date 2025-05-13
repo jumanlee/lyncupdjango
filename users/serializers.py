@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from .models import *
 
 #ths RegisterSerializer code is originally written by me but taken from my own project for Advanced Web Develoopment
@@ -52,6 +53,15 @@ class RegisterSerializer(serializers.ModelSerializer):
         Profile.objects.create(appuser=appuser)
 
         return appuser
+
+#for use in SIMPLE_JWT["TOKEN_OBTAIN_SERIALIZER"] in settings.py
+#in DRF serializers, attrs is just the dictionary of input fields after they’ve passed individual field validation. In the case of the token-obtain endpoint, those fields are credentials e.g. an email/username and a password.
+class VerifiedTokenObtainPairSerializer(TokenObtainPairSerializer):
+    def validate(self, attrs):
+        data = super().validate(attrs)
+        if not self.user.is_verified:
+            raise serializers.ValidationError("Email not verified.")
+        return data
 
 
 class LikeSerializer(serializers.ModelSerializer):
