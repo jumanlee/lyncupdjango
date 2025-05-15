@@ -22,6 +22,9 @@ from rest_framework import permissions
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework.permissions import AllowAny
+from django.shortcuts import redirect
+from django.conf import settings
+
 
 
 #no need for Login view as we're using JWT and it's already handled by djangorestframework-simplejwt. see main lyncup folder's urls.py
@@ -79,7 +82,7 @@ class VerifyEmailView(APIView):
             #force_str(...) this converts bytes back into a string
             uid = force_str(urlsafe_base64_decode(uidb64))
 
-            #get_user_model() looks at AUTH_USER_MODEL in settings.py, so get_user_model() returns your custom AppUser class, not Django’s default User
+            #get_user_model() looks at AUTH_USER_MODEL in settings.py, so get_user_model() gets the custom AppUser class, as defined in models.py, not Django’s default User
             user = get_user_model().objects.get(pk=uid)
         except (TypeError, ValueError, OverflowError, get_user_model().DoesNotExist):
             return Response({"detail": "Invalid link"}, status=status.HTTP_400_BAD_REQUEST)
@@ -88,9 +91,44 @@ class VerifyEmailView(APIView):
             if not user.is_verified:
                 user.is_verified = True
                 user.save()
-            return Response({"detail": "Email verified"}, status=status.HTTP_200_OK)
+            return redirect(settings.FRONTEND_VERIFY_SUCCESS_URL)
 
-        return Response({"detail": "Invalid or expired link"}, status=status.HTTP_400_BAD_REQUEST)
+        # return Response({"detail": "Invalid or expired link"}, status=status.HTTP_400_BAD_REQUEST)
+        return redirect(settings.FRONTEND_VERIFY_FAIL_URL)
+
+class ResendVerificationView(generics.GenericAPIView, mixins.CreateModelMixin):
+    """
+    POST { "email": "you@example.com" }
+    """
+    serializer_class = ResendVerificationSerializer
+    authentication_classes = []       # allow anonymous
+    permission_classes     = [AllowAny]
+
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        email = serializer.validated_data["email"]
+
+        User = get_user_model()
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            return Response(
+                {"detail": "No account with that email"}, 
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        if user.is_verified:
+            return Response(
+                {"detail": "Email already verified."}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        send_verification_email(request, user)
+        return Response(
+            {"detail": "Verification email resent."}, 
+            status=status.HTTP_200_OK
+        )
 
 
 class LikeView(APIView):

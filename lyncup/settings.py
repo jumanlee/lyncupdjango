@@ -295,7 +295,8 @@ EMAIL_USE_TLS = config("EMAIL_USE_TLS", default=True, cast=bool)
 #http://localhost:5173/verify-email/<uidb64>/<token>
 # FRONTEND_VERIFY_URL = "http://localhost:5173/verify-email"  
 FRONTEND_VERIFY_URL = "http://localhost:8080/api/users/verify-email"
-
+FRONTEND_VERIFY_SUCCESS_URL = "http://localhost:5173/verify-success"
+FRONTEND_VERIFY_FAIL_URL = "http://localhost:5173/verify-fail"
 
 
 

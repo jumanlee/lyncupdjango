@@ -54,6 +54,11 @@ class RegisterSerializer(serializers.ModelSerializer):
 
         return appuser
 
+
+class ResendVerificationSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+
+
 #for use in SIMPLE_JWT["TOKEN_OBTAIN_SERIALIZER"] in settings.py
 #in DRF serializers, attrs is just the dictionary of input fields after they’ve passed individual field validation. In the case of the token-obtain endpoint, those fields are credentials e.g. an email/username and a password.
 class VerifiedTokenObtainPairSerializer(TokenObtainPairSerializer):
