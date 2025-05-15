@@ -59,8 +59,33 @@ class Register(generics.GenericAPIView, mixins.CreateModelMixin):
     serializer_class = RegisterSerializer
 
     def post(self, request, *args, **kwargs):
+        #"" the default value returned if the key "email" does not exist in request.data
+        email = request.data.get("email", "").strip().lower()
+        custom_user_model = get_user_model()
+
+        #if an account already exists
+        try:
+            existing = custom_user_model.objects.get(email=email)
+        except custom_user_model.DoesNotExist:
+            existing = None
+        
+        if existing:
+            #exists but not verified
+            if not existing.is_verified:
+                return Response(
+                    {"detail": "An account with that email already exists but is not yet verified. Please check your inbox."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            else:
+                return Response(
+                    {"detail": "An account with that email already exists. Please log in."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+        #otherwise, if not already existing, go create
         #.create comes from Mixin
         return self.create(request, *args, **kwargs)
+
 
     #perform_create is called by self.create above
     def perform_create(self, serializer):
