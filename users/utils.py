@@ -6,7 +6,7 @@ from django.core.mail import send_mail
 from django.conf import settings
 
 #if expect high traffic, could use Celery: just wrap the send_mail call in a celery task. Nothing else changes.) But for now, we don't need to.
-def send_verification_email(request, user):
+def send_verification_email(user):
     #uid is user ID, but safely encoded in base64 so it can be used in a URL
     #Base64 is a way to convert any data (like a number, text, or file) into a string made only of A–Z, a–z, 0–9, +, /
     #note that user.pk is always the primary-key value of the instance, no matter what we've named that field. pk is just a built-in alias for the primary key field, whatever it is. In AppUser model it's declared id = models.BigAutoField(primary_key=True), so, user.pk == user.id (an auto-incrementing int), if one day we swapped the PK to a UUID (or anything else) user.pk would still “just work”, so leave the line exactly as it is

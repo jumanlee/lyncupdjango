@@ -65,7 +65,7 @@ class Register(generics.GenericAPIView, mixins.CreateModelMixin):
     #perform_create is called by self.create above
     def perform_create(self, serializer):
         user = serializer.save()         #creates AppUser + Profile
-        send_verification_email(self.request, user)
+        send_verification_email(user)
 
 class VerifiedTokenObtainPairView(TokenObtainPairView):
     serializer_class = VerifiedTokenObtainPairSerializer
@@ -97,40 +97,43 @@ class VerifyEmailView(APIView):
         return redirect(settings.FRONTEND_VERIFY_FAIL_URL)
 
 class ResendVerificationView(generics.GenericAPIView, mixins.CreateModelMixin):
-    """
-    POST { "email": "you@example.com" }
-    """
+
     serializer_class = ResendVerificationSerializer
-    authentication_classes = []       # allow anonymous
-    permission_classes     = [AllowAny]
+    authentication_classes = []           #no auth needed
+    permission_classes = [AllowAny]    #open to anyone
+
+    #POST { "email": "you@example.com" }
 
     def post(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         email = serializer.validated_data["email"]
 
-        User = get_user_model()
+        #get_user_model() returns the appuser class, obtained from settings.py, not an instance!
+        custom_user_model = get_user_model()
         try:
-            user = User.objects.get(email=email)
-        except User.DoesNotExist:
+            user = custom_user_model.objects.get(email=email)
+        except custom_user_model.DoesNotExist:
             return Response(
-                {"detail": "No account with that email"}, 
+                {"detail": "No account with that email"},
                 status=status.HTTP_404_NOT_FOUND
             )
 
         if user.is_verified:
             return Response(
-                {"detail": "Email already verified."}, 
+                {"detail": "Email already verified."},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        send_verification_email(request, user)
+        # send new verification link
+        send_verification_email(user)
         return Response(
-            {"detail": "Verification email resent."}, 
+            {"detail": "Verification email resent."},
             status=status.HTTP_200_OK
         )
 
 
+#like and unlike can be placed into viewset, but will refactor later.
 class LikeView(APIView):
 
     authentication_classes = [JWTAuthentication]
