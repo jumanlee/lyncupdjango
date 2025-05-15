@@ -69,18 +69,32 @@ class Register(generics.GenericAPIView, mixins.CreateModelMixin):
         except custom_user_model.DoesNotExist:
             existing = None
         
+        if existing and not existing.is_verified:
+            #silently re-send the link
+            send_verification_email(existing)
+
+            return Response(
+                {
+                    "detail": (
+                        "This e-mail is already registered but not verified. "
+                        "We've just sent you a fresh verification link, "
+                        "please check your inbox."
+                    ),
+                    "code": "verification_resent",
+                },
+                status=status.HTTP_200_OK,     
+            )
         if existing:
-            #exists but not verified
-            if not existing.is_verified:
-                return Response(
-                    {"detail": "An account with that email already exists but is not yet verified. Please check your inbox."},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-            else:
-                return Response(
-                    {"detail": "An account with that email already exists. Please log in."},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
+            return Response(
+                {
+                    "detail": (
+                        "An account with that e-mail already exists. "
+                        "Please log in instead."
+                    ),
+                    "code": "already_exists",
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
             
         #otherwise, if not already existing, go create
         #.create comes from Mixin
