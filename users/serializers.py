@@ -55,8 +55,19 @@ class RegisterSerializer(serializers.ModelSerializer):
         return appuser
 
 
-class ResendVerificationSerializer(serializers.Serializer):
+class EmailSerializer(serializers.Serializer):
     email = serializers.EmailField()
+
+class PasswordResetConfirmSerializer(serializers.Serializer):
+    uidb64 = serializers.CharField()
+    token = serializers.CharField()
+    new_password = serializers.CharField(
+        min_length=8,
+        write_only=True,
+        error_messages={
+            'min_length': 'Password must be at least 8 characters long.'
+        }
+    )
 
 
 #for use in SIMPLE_JWT["TOKEN_OBTAIN_SERIALIZER"] in settings.py

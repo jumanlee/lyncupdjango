@@ -98,7 +98,11 @@ REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
 
         'rest_framework_simplejwt.authentication.JWTAuthentication',
-    )
+    ),
+    'DEFAULT_THROTTLE_RATES': {
+        'anon': '5/minute',
+        'user': '1000/day', 
+  }
 }
 
 MIDDLEWARE = [
@@ -294,9 +298,14 @@ EMAIL_USE_TLS = config("EMAIL_USE_TLS", default=True, cast=bool)
 #It forms the beginning of the link the user clicks to confirm their email, like this:
 #http://localhost:5173/verify-email/<uidb64>/<token>
 # FRONTEND_VERIFY_URL = "http://localhost:5173/verify-email"  
-FRONTEND_VERIFY_URL = "http://localhost:8080/api/users/verify-email"
+BACKEND_VERIFY_URL = "http://localhost:8080/api/users/verify-email"
 FRONTEND_VERIFY_SUCCESS_URL = "http://localhost:5173/verify-success"
 FRONTEND_VERIFY_FAIL_URL = "http://localhost:5173/verify-fail"
+
+FRONTEND_RESET_PASSWORD_URL = "http://localhost:5173/reset-password"
+FRONTEND_RESET_PASSWORD_FAIL_URL = "http://localhost:5173/reset-password-fail"
+
+
 
 
 

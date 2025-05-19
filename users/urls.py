@@ -9,6 +9,10 @@ urlpatterns = [
     path('register/', views.Register.as_view(), name='register_api'),
     path("verify-email/<uidb64>/<token>/", views.VerifyEmailView.as_view(), name="verify-email"),
     path("resend-verification/", views.ResendVerificationView.as_view(), name="resend-verification"),
+    path("send-password-reset/", views.SendPasswordResetView.as_view(), name="send-password-reset"),
+    path("reset-password/<uidb64>/<token>/", views.ResetPasswordView.as_view(), name="reset-password"),
+
+
     path('like/', views.LikeView.as_view(), name='like_api'),
     path('unlike/', views.UnlikeView.as_view(), name='unlike_api'),
     path("updateprofile/", views.UpdateProfileView.as_view(), name='updateprofile_api'),
@@ -16,7 +20,7 @@ urlpatterns = [
     path("searchorg/", views.SearchOrgView.as_view(), name='searchorg_api'),
     path("showmultiprofiles/", views.ShowMultiProfilesView.as_view(), name='showmultiprofiles_api'),
     path("showrequests/", views.ShowSentRequestsView.as_view(), name='showrequests_api'),
-    path("addrequest/", views.AddRequestView.as_view(), name='addrequest_api'),
+    √
 ]
 
 #my code ends here

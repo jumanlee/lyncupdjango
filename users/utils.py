@@ -15,8 +15,7 @@ def send_verification_email(user):
     #we don't use JWT token here, as the user is not yet authenticated, we use a default token
     token = default_token_generator.make_token(user)
 
-    #if React handles the page, keep only one link.
-    verify_link = f"{settings.FRONTEND_VERIFY_URL}/{uid}/{token}"
+    verify_link = f"{settings.BACKEND_VERIFY_URL}/{uid}/{token}"
 
     subject = "Verify your email"
     message = (
@@ -34,3 +33,19 @@ def send_verification_email(user):
         [user.email],
         fail_silently=False,
     )
+
+def send_password_reset(user):
+    uid = urlsafe_base64_encode(force_bytes(user.pk))
+    token = default_token_generator.make_token(user)
+
+    reset_link = f"{settings.BACKEND_RESET_PASSWORD_URL}/{uid}/{token}"
+
+    subject = "Reset your password"
+    message = (
+        f"Hi {getattr(user, 'first_name', user.email)},\n\n"
+        "You requested a password reset. Click the link below:\n\n"
+        f"{reset_link}\n\n"
+        "If you didn’t ask for this, just ignore this email."
+    )
+    send_mail(subject, message, settings.EMAIL_HOST_USER, [user.email], fail_silently=False)
+

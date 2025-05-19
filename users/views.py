@@ -14,7 +14,7 @@ from django.core.exceptions import ValidationError
 from django.http import Http404
 from .models import *
 from .serializers import *
-from .utils import send_verification_email
+from .utils import send_verification_email, send_password_reset
 from django.utils.http import urlsafe_base64_decode
 from django.utils.encoding import force_str
 from django.contrib.auth.tokens import default_token_generator
@@ -24,6 +24,11 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework.permissions import AllowAny
 from django.shortcuts import redirect
 from django.conf import settings
+from rest_framework.throttling import AnonRateThrottle
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError as DjangoValidationError
+
+
 
 
 
@@ -41,6 +46,9 @@ class TestApi(APIView):
 class IsVerified(permissions.BasePermission):
     def has_permission(self, request, view):
         return bool(request.user and request.user.is_authenticated and request.user.is_verified)
+
+class VerifiedTokenObtainPairView(TokenObtainPairView):
+    serializer_class = VerifiedTokenObtainPairSerializer
 
 #register users
 class Register(generics.GenericAPIView, mixins.CreateModelMixin):
@@ -106,12 +114,11 @@ class Register(generics.GenericAPIView, mixins.CreateModelMixin):
         user = serializer.save()         #creates AppUser + Profile
         send_verification_email(user)
 
-class VerifiedTokenObtainPairView(TokenObtainPairView):
-    serializer_class = VerifiedTokenObtainPairSerializer
-
+#the link that the user clicks on in the email
 class VerifyEmailView(APIView):
     #authentication_classes determines who the user is by reading tokens or session info from the request and setting request.user.
     #permission_classes decides whether that user is allowed to access the view, based on rules like IsAuthenticated or custom conditions.
+    #we allow anyone to access this view. the real check is done in the get() method below: if default_token_generator.check_token(user, token):
     authentication_classes = []       
     permission_classes = [AllowAny]
 
@@ -135,17 +142,21 @@ class VerifyEmailView(APIView):
         # return Response({"detail": "Invalid or expired link"}, status=status.HTTP_400_BAD_REQUEST)
         return redirect(settings.FRONTEND_VERIFY_FAIL_URL)
 
+#this is the view for when user requests a new verification email
 class ResendVerificationView(generics.GenericAPIView, mixins.CreateModelMixin):
 
-    serializer_class = ResendVerificationSerializer
+    #serializer_class is from GenericAPIView
+    serializer_class = EmailSerializer
     authentication_classes = []           #no auth needed
     permission_classes = [AllowAny]    #open to anyone
 
     #POST { "email": "you@example.com" }
 
     def post(self, request, *args, **kwargs):
+        #get_serializer() is from genericAPIView to instantiate the serializer_class
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
+        #.is_valid stores the cleaned result in serializer.validated_data
         email = serializer.validated_data["email"]
 
         #get_user_model() returns the appuser class, obtained from settings.py, not an instance!
@@ -170,6 +181,97 @@ class ResendVerificationView(generics.GenericAPIView, mixins.CreateModelMixin):
             {"detail": "Verification email resent."},
             status=status.HTTP_200_OK
         )
+
+#view for when user requests a password reset
+class SendPasswordResetView(generics.GenericAPIView, mixins.CreateModelMixin):
+    serializer_class = EmailSerializer
+    authentication_classes = []           #no auth needed
+    permission_classes = [AllowAny]    #open to anyone
+
+    #prevent spam, limit to limited requests per hour, see settings.py rest framework
+    throttle_classes   = [AnonRateThrottle]
+
+    #POST { "email": "you@example.com" }
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        email = serializer.validated_data["email"]
+
+        custom_user_model = get_user_model()
+        try:
+            user = custom_user_model.objects.get(email=email)
+        except custom_user_model.DoesNotExist:
+            return Response(
+                {"detail": "If your email is registered, you will receive a reset link."},
+                status=status.HTTP_200_OK
+            )
+
+        #send new reset link
+        send_password_reset(user)
+        return Response(
+            {"detail": "If your email is registered, you will receive a reset link."},
+            status=status.HTTP_200_OK
+        )
+
+#get: view for when user clicks on the link in the email
+#post: view for when user submits the new password from React
+class ResetPasswordView(APIView):
+    authentication_classes = []       
+    permission_classes = [AllowAny]
+    throttle_classes   = [AnonRateThrottle]
+
+    #this is for when user clicks on the link in the email
+    def get(self, request, uidb64=None, token=None, *args, **kwargs):
+        try:
+            uid = force_str(urlsafe_base64_decode(uidb64))
+            user = get_user_model().objects.get(pk=uid)
+        except (TypeError, ValueError, OverflowError, get_user_model().DoesNotExist):
+            return redirect(settings.FRONTEND_RESET_PASSWORD_FAIL_URL)
+
+        if not default_token_generator.check_token(user, token):
+            return redirect(settings.FRONTEND_RESET_PASSWORD_FAIL_URL)
+
+        #redirect to react
+        return redirect(f"{settings.FRONTEND_RESET_PASSWORD_URL}/{uidb64}/{token}")
+
+    #this is for when user submits the new password from React
+    def post(self, request, uidb64=None, token=None, *args, **kwargs):
+
+        #validate input, make sure there's minimum length as per serializer
+        data = {
+            'uidb64': uidb64,
+            'token': token,
+            'new_password': request.data.get('new_password')
+        }
+        serializer = PasswordResetConfirmSerializer(data=data)
+        serializer.is_valid(raise_exception=True)
+
+        #lookup user
+        try:
+            uid  = force_str(urlsafe_base64_decode(serializer.validated_data['uidb64']))
+            user = get_user_model().objects.get(pk=uid)
+        except (TypeError, ValueError, OverflowError, get_user_model().DoesNotExist):
+            return Response({'detail': 'Invalid or expired token.'}, status=status.HTTP_400_BAD_REQUEST)
+
+
+        #check token
+        if not default_token_generator.check_token(user, serializer.validated_data['token']):
+            return Response({'detail': 'Invalid or expired token.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        #enforce django password validation
+        new_password = serializer.validated_data['new_password']
+        try:
+            validate_password(new_password, user)
+        except DjangoValidationError as exc:
+            # exc.messages is a list of error strings
+            return Response({'detail': exc.messages},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+
+        #save new password
+        user.set_password(new_password)
+        user.save()
+        return Response({'detail': 'Password has been reset.'}, status=status.HTTP_200_OK)
 
 
 #like and unlike can be placed into viewset, but will refactor later.
