@@ -252,11 +252,9 @@ class ResetPasswordView(APIView):
         except (TypeError, ValueError, OverflowError, get_user_model().DoesNotExist):
             return Response({'detail': 'Invalid or expired token.'}, status=status.HTTP_400_BAD_REQUEST)
 
-
         #check token
         if not default_token_generator.check_token(user, serializer.validated_data['token']):
             return Response({'detail': 'Invalid or expired token.'}, status=status.HTTP_400_BAD_REQUEST)
-
 
         #save new password
         user.set_password(new_password)

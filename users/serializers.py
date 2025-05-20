@@ -7,6 +7,7 @@ from django.contrib.auth.password_validation import validate_password
 class RegisterSerializer(serializers.ModelSerializer):
 
     #write only ensures the field can only be written in but not read from. This is to ensure security
+    #by default, become required
     password = serializers.CharField(write_only=True)
     password2 = serializers.CharField(write_only=True)
 
@@ -26,15 +27,10 @@ class RegisterSerializer(serializers.ModelSerializer):
     # .create() method in serializer is called when serializer.save() is executed inside perform_create() in views.py.
     def create(self, validated_data):
 
-        password2 = validated_data.pop('password2')
+        #password2 not needed, destroy it
+        validated_data.pop('password2', None)
 
         password = validated_data.pop('password')
-
-        if not password or not password2:
-            raise serializers.ValidationError({"password": "No password entered!"})
-
-        if password != password2:
-            raise serializers.ValidationError({"password2": "Passwords do not match!"})
 
         appuser = AppUser.objects.create_user(
             email=validated_data["email"],
@@ -54,6 +50,26 @@ class RegisterSerializer(serializers.ModelSerializer):
         Profile.objects.create(appuser=appuser)
 
         return appuser
+
+    def validate_password(self, value):
+
+        try:
+            #user can be None or actual user if needed
+            validate_password(value, user=None)  
+        except DjangoValidationError as exc:
+            raise serializers.ValidationError(exc.messages)
+        return value
+
+    def validate_email(self, email):
+        return email.strip().lower()
+
+    def validate(self, attrs):
+        #cross-field check
+        if attrs['password'] != attrs['password2']:
+            raise serializers.ValidationError({
+                'detail': 'Passwords must match.'
+            })
+        return attrs
 
 
 class EmailSerializer(serializers.Serializer):
