@@ -29,9 +29,6 @@ from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError as DjangoValidationError
 
 
-
-
-
 #no need for Login view as we're using JWT and it's already handled by djangorestframework-simplejwt. see main lyncup folder's urls.py
 
 #this is just a class for frontend users to test if the API service can be accessed with their authenticated token.
@@ -246,6 +243,8 @@ class ResetPasswordView(APIView):
         serializer = PasswordResetConfirmSerializer(data=data)
         serializer.is_valid(raise_exception=True)
 
+        new_password = serializer.validated_data['new_password']
+
         #lookup user
         try:
             uid  = force_str(urlsafe_base64_decode(serializer.validated_data['uidb64']))
@@ -257,15 +256,6 @@ class ResetPasswordView(APIView):
         #check token
         if not default_token_generator.check_token(user, serializer.validated_data['token']):
             return Response({'detail': 'Invalid or expired token.'}, status=status.HTTP_400_BAD_REQUEST)
-
-        #enforce django password validation
-        new_password = serializer.validated_data['new_password']
-        try:
-            validate_password(new_password, user)
-        except DjangoValidationError as exc:
-            # exc.messages is a list of error strings
-            return Response({'detail': exc.messages},
-                            status=status.HTTP_400_BAD_REQUEST)
 
 
         #save new password

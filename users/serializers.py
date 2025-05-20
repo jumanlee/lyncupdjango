@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from .models import *
+from django.contrib.auth.password_validation import validate_password
 
 #ths RegisterSerializer code is originally written by me but taken from my own project for Advanced Web Develoopment
 class RegisterSerializer(serializers.ModelSerializer):
@@ -59,6 +60,9 @@ class EmailSerializer(serializers.Serializer):
     email = serializers.EmailField()
 
 class PasswordResetConfirmSerializer(serializers.Serializer):
+    #field-level validation, runs Django's AUTH_PASSWORD_VALIDATORS.
+    #any failures raise a ValidationError with a list of messages.
+
     uidb64 = serializers.CharField()
     token = serializers.CharField()
     new_password = serializers.CharField(
@@ -68,6 +72,24 @@ class PasswordResetConfirmSerializer(serializers.Serializer):
             'min_length': 'Password must be at least 8 characters long.'
         }
     )
+
+    #Field-level validation runs first. DRF calls any validate_<fieldname>(…) methods and checks built-in validators (e.g. new_password = serializers.CharField as defined above) on each field (e.g  validate_new_password)
+    #CharField is checked first, then validate_new_password is called.
+    #Once every field is individually valid, DRF collects them into a single dictionary attrs
+    #DRF then calls validate(self, attrs) with that dict, attrs is that dict.
+
+    def validate_new_password(self, value):
+        #don’t need to manually redo the CharField checks (like min_length) inside custom validate_new_password() method because DRF runs them automatically before calling that method
+        try:
+            #user can be None or actual user if needed
+            validate_password(value, user=None)  
+        except DjangoValidationError as exc:
+            raise serializers.ValidationError(exc.messages)
+        return value
+    
+    ##optional, def validate method can be commented out, unless we need to do someting with the attrs dict like corss field validation
+    # def validate(self, attrs):
+    #     return attrs
 
 
 #for use in SIMPLE_JWT["TOKEN_OBTAIN_SERIALIZER"] in settings.py
