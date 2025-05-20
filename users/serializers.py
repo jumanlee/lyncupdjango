@@ -2,6 +2,8 @@ from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from .models import *
 from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError as DjangoValidationError
+
 
 #ths RegisterSerializer code is originally written by me but taken from my own project for Advanced Web Develoopment
 class RegisterSerializer(serializers.ModelSerializer):
@@ -57,6 +59,7 @@ class RegisterSerializer(serializers.ModelSerializer):
             #user can be None or actual user if needed
             validate_password(value, user=None)  
         except DjangoValidationError as exc:
+            #frontend expects "detail" key, added to the error message
             raise serializers.ValidationError(exc.messages)
         return value
 
