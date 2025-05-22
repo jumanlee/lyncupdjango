@@ -110,6 +110,36 @@ class PasswordResetConfirmSerializer(serializers.Serializer):
     # def validate(self, attrs):
     #     return attrs
 
+class ChangePasswordAuthenticatedSerializer(serializers.Serializer):
+    old_password = serializers.CharField(write_only=True)
+    new_password = serializers.CharField(write_only=True, min_length=8)
+    confirm_password = serializers.CharField(write_only=True, min_length=8)
+
+    def validate_old_password(self, value):
+        user = self.context['request'].user
+        if not user.check_password(value):
+            raise serializers.ValidationError("Old password is incorrect.")
+        return value
+
+    def validate_new_password(self, value):
+        user = self.context['request'].user
+        try:
+            validate_password(value, user=user)
+        except DjangoValidationError as exc:
+            raise serializers.ValidationError(exc.messages)
+        return value
+
+    def validate(self, attrs):
+        #cross-field check
+        if attrs['new_password'] != attrs['confirm_password']:
+            raise serializers.ValidationError({
+                'detail': 'Passwords must match.'
+            })
+        #remove confirm_password from attrs dict, as we don't want to save it in the database, keeping  it from reaching view, keeping it tidy.
+        attrs.pop("confirm_password", None) 
+        return attrs
+
+    
 
 #for use in SIMPLE_JWT["TOKEN_OBTAIN_SERIALIZER"] in settings.py
 #in DRF serializers, attrs is just the dictionary of input fields after they’ve passed individual field validation. In the case of the token-obtain endpoint, those fields are credentials e.g. an email/username and a password.

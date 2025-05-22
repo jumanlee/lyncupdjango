@@ -261,6 +261,22 @@ class ResetPasswordView(APIView):
         user.save()
         return Response({'detail': 'Password has been reset.'}, status=status.HTTP_200_OK)
 
+#this is for change password for users already logged in
+class ChangePasswordAuthenticatedView(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated, IsVerified]
+
+    #I'm delegating the password validation to the serializer, so I don't need to do it here. Alternatively, I could do it here too, but since I already have validate_password in other serializers, better to keep it consistent. Do deletegate to serializer, I will need to pass "context" because passing data=request.data only passes request.data, not the request.user needed for validation. "context" allows me to pass the request object to the serializer, so I can access the user in the serializer.
+    def post(self, request, *args, **kwargs):
+        serializer = ChangePasswordAuthenticatedSerializer(data=request.data, context={'request': request})
+        serializer.is_valid(raise_exception=True)
+
+        user = request.user
+        user.set_password(serializer.validated_data['new_password'])
+        user.save()
+
+        return Response({"detail": "Password updated successfully."}, status=status.HTTP_200_OK)
+
 
 #like and unlike can be placed into viewset, but will refactor later.
 class LikeView(APIView):

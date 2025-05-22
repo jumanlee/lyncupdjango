@@ -11,6 +11,7 @@ urlpatterns = [
     path("resend-verification/", views.ResendVerificationView.as_view(), name="resend-verification"),
     path("send-password-reset/", views.SendPasswordResetView.as_view(), name="send-password-reset"),
     path("reset-password/<uidb64>/<token>/", views.ResetPasswordView.as_view(), name="reset-password"),
+    path('change-password-authenticated/', views.ChangePasswordAuthenticatedView.as_view(), name='change-password-authenticated'),
 
 
     path('like/', views.LikeView.as_view(), name='like_api'),
