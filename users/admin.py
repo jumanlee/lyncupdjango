@@ -38,8 +38,14 @@ class OrganisationAdmin(admin.ModelAdmin):
     list_display = ('id', 'name', 'citytown', 'country', 'date_created')
     search_fields = ('name', 'citytown', 'country')
 
+class CountryAdmin(admin.ModelAdmin):
+    model = Country
+    list_display = ('id', 'name')
+    search_fields = ('name',)
+
 
 admin.site.register(AppUser, CustomUserAdmin)
 admin.site.register(Like, LikeAdmin)
 admin.site.register(Profile, ProfileAdmin)
 admin.site.register(Organisation, OrganisationAdmin)
+admin.site.register(Country, CountryAdmin)

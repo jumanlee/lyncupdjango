@@ -370,6 +370,7 @@ class UpdateProfileView(generics.GenericAPIView, mixins.UpdateModelMixin):
     def put(self, request, *args, **kwargs):
         return self.update(request, *args, **kwargs)
 
+
     #From documentation: what goes on in update (from mixins.UpdateModelMixin):
     # def update(self, request, *args, **kwargs):
     #     partial = kwargs.pop('partial', False)
@@ -404,6 +405,12 @@ class ShowMultiProfilesView(generics.ListAPIView):
     permission_classes = [IsAuthenticated, IsVerified]
     serializer_class = ShowProfileOrgSerializer
 
+    #ListAPIView inherits from ListModelMixin, which provides the .list() method. .get() → calls .list():
+    # def get(self, request, *args, **kwargs):
+    #     return self.list(request, *args, **kwargs)
+    #and inside list(), the first thing it does is:
+    #queryset = self.filter_queryset(self.get_queryset()). We ovverride this as we need to deal with the array of user_ids passed in the query params.
+
     def get_queryset(self):
         user_ids_param = self.request.query_params.get("user_ids", "")
         user_ids = []
@@ -418,6 +425,14 @@ class ShowMultiProfilesView(generics.ListAPIView):
         except ValueError:
             user_ids = []
         return Profile.objects.filter(appuser__id__in=user_ids)
+
+class ShowAllCountriesView(generics.ListAPIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated, IsVerified]
+    serializer_class = CountrySerializer
+
+    #no need to override get_queryset() as we just want to return all countries, straightforward
+    queryset = Country.objects.all().order_by("name")
 
 
 #find organisation in the database, which may return a collection. generics.RetrieveAPIView is not suitable as we will give a partial keyword DRF will then return a collection of related companies. I need to override, so generics + mixins is better.

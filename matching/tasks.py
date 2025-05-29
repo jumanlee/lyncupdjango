@@ -64,7 +64,7 @@ def build_graph_annoy():
 def run_matching_algo():
 
     #check for Annoy directory and required files
-    base_dir = os.path.join(os.path.dirname(__file__), "Annoy")
+    base_dir = os.path.join(settings.BASE_DIR, "matching", "Annoy")
     ann_file = os.path.join(base_dir, "cluster_global.ann")
     json_file = os.path.join(base_dir, "global_map.json")
 
@@ -94,7 +94,6 @@ def run_matching_algo():
     
     try:
         logger.info("run_matching_algo started")
-
 
         #get all user id's in queue in redis
         # redis_client.smembers("queue") returns strings because Redis stores everything as strings by default, even if insert numbers.
@@ -126,8 +125,8 @@ def run_matching_algo():
 
         #commented out to enable easier testing (using fewer users) in development mode. 
         #comment out in production mode!
-        if len(retrieved_user_ids) < 2:
-            logger.debug("Not enough users to match (need ≥2).")
+        if len(retrieved_user_ids) < 1:
+            logger.debug("Not enough users to match.")
             return
 
 

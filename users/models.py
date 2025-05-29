@@ -46,11 +46,13 @@ class AppUser(AbstractBaseUser, PermissionsMixin):
     #is_active is built-in
     is_active = models.BooleanField(default=True)
     is_oneline = models.BooleanField(default=False)
+
+    #deliberate design choice to make organisation an attribute of AppUSer, rather than Profile, as this may be used for easy filtering of users and also user credentials (requiring work email to sign up to ensure genuine remote workers) being linked closely to their company. 
     organisation = models.ForeignKey("Organisation", on_delete=models.SET_NULL, null=True, blank=True, related_name="appusers")
 
     objects = AppUserManager()
 
-    #  email is not included in REQUIRED_FIELDS because it is already defined as the USERNAME_FIELD. 
+    #email is not included in REQUIRED_FIELDS because it is already defined as the USERNAME_FIELD. 
     #Because I defined the USERNAME_FIELD as email here, the simple default JWT authentication takes in email as the username when user requests for token. 
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ['username', 'firstname', 'lastname']
@@ -71,6 +73,8 @@ class AppUser(AbstractBaseUser, PermissionsMixin):
 class Profile(models.Model):
 
     appuser = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="profile")
+
+    #country is an optional field, so better to be an attr of profile than appuser
     country = models.ForeignKey("Country", on_delete=models.SET_NULL, null=True, blank=True, related_name="profile")
     status = models.TextField(blank=True, null=True)
     aboutme = models.TextField(blank=True, null=True)  

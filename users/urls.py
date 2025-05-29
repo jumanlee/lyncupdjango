@@ -21,6 +21,7 @@ urlpatterns = [
     path("searchorg/", views.SearchOrgView.as_view(), name='searchorg_api'),
     path("showmultiprofiles/", views.ShowMultiProfilesView.as_view(), name='showmultiprofiles_api'),
     path("showrequests/", views.ShowSentRequestsView.as_view(), name='showrequests_api'),
+    path("showallcountries/", views.ShowAllCountriesView.as_view(), name='showallcountries_api'),
 ]
 
 #my code ends here
