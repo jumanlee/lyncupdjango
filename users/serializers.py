@@ -208,7 +208,7 @@ class UpdateProfileOrgSerializer(serializers.ModelSerializer):
     class Meta:
         model = Profile
 
-        fields = ["firstname", "lastname", "aboutme", 'citytown', 'country_id', 'country_name', 'age', 'gender', "organisation_id", "organisation_name"]
+        fields = ["firstname", "lastname", "aboutme", 'country_id', 'country_name', 'age', 'gender', "organisation_id", "organisation_name"]
 
     #Note: both PUT (full update) and PATCH (partial update) use the same update() method in the serializer. This is called within perform_update in views, UpdateMixin. 
     #overriding this is to allow the user to change their associated orgniasaitoin if they want to. 
@@ -270,7 +270,7 @@ class ShowProfileOrgSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Profile
-        fields = ["user_id", "firstname", "lastname", "aboutme", 'citytown', 'country_id', 'country_name', 'age', 'gender', "organisation_id", "organisation_name"]
+        fields = ["user_id", "firstname", "lastname", "aboutme", 'country_id', 'country_name', 'age', 'gender', "organisation_id", "organisation_name"]
 
 class AddRequestSerializer(serializers.ModelSerializer):
         class Meta:

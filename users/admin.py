@@ -29,14 +29,14 @@ class LikeAdmin(admin.ModelAdmin):
 
 class ProfileAdmin(admin.ModelAdmin):
     model = Profile
-    list_display = ('id', 'appuser', "citytown", "aboutme", 'country', 'age', 'gender')
+    list_display = ('id', 'appuser', "aboutme", 'country', 'age', 'gender')
     list_filter = ('gender', 'country')
-    search_fields = ('appuser__email', 'appuser__username', 'citytown', 'country')
+    search_fields = ('appuser__email', 'appuser__username', 'country')
 
 class OrganisationAdmin(admin.ModelAdmin):
     model = Organisation
-    list_display = ('id', 'name', 'citytown', 'country', 'date_created')
-    search_fields = ('name', 'citytown', 'country')
+    list_display = ('id', 'name', 'country', 'date_created')
+    search_fields = ('name', 'country')
 
 class CountryAdmin(admin.ModelAdmin):
     model = Country

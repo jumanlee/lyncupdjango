@@ -78,7 +78,6 @@ class Profile(models.Model):
     country = models.ForeignKey("Country", on_delete=models.SET_NULL, null=True, blank=True, related_name="profile")
     status = models.TextField(blank=True, null=True)
     aboutme = models.TextField(blank=True, null=True)  
-    citytown = models.CharField(max_length=100, blank=True, null=True)
     age = models.IntegerField(blank=True, null=True)
 
     gender = models.CharField(max_length=2, 
@@ -122,8 +121,7 @@ class Like(models.Model):
 class Organisation(models.Model):
     name = models.CharField(max_length=100, unique=True)
     description = models.TextField(blank=True, null=True)
-    citytown = models.CharField(max_length=100, blank=True, null=True)
-    country = models.CharField(max_length=100, blank=True, null=True)
+    country = models.ForeignKey("Country", on_delete=models.SET_NULL, null=True, blank=True, related_name="organisation")
     date_created = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
