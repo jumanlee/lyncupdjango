@@ -351,6 +351,20 @@ class UnlikeView(APIView):
             "last_like_date": like_instance.last_like_date
         },status=status.HTTP_200_OK)
 
+#view to check whether the user's profile is complete or not (all required fields are filled in)
+class CheckProfileCompleteView(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated, IsVerified]
+
+    def get(self, request, *args, **kwargs):
+        #get the profile for the user
+        profile, isCreated = Profile.objects.get_or_create(appuser=request.user)
+
+        return Response(
+            {"profile_complete": profile.required_complete},
+            status=status.HTTP_200_OK
+        )
+
 #I know we could alternatively use generics.UpdateAPIView alone instead which means I don't need to use Mixin as its included but I want more flexibility to customise, such as logging different error messages as below. I prefer using these instead.
 class UpdateProfileView(generics.GenericAPIView, mixins.UpdateModelMixin):
     authentication_classes = [JWTAuthentication]

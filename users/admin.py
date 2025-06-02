@@ -6,20 +6,63 @@ from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 from .models import *
 
+# class CustomUserAdmin(UserAdmin):
+#     model = AppUser
+
+#     #what fields to display
+#     list_display = ('id', 'email', 'username', 'firstname', 'lastname', 'organisation', 'is_staff', 'is_active', 'is_verified')
+
+#     #what fields to filter by in the admin panel
+#     list_filter = ('is_staff', 'is_active')
+
+#     #searchable fields in the admin panel
+#     search_fields = ('email', 'username', 'firstname', 'lastname')
+
+#     #specify the ordering of users
+#     ordering = ('email',)
+
+# @admin.register(AppUser)
 class CustomUserAdmin(UserAdmin):
     model = AppUser
 
-    #what fields to display
-    list_display = ('id', 'email', 'username', 'firstname', 'lastname', 'organisation', 'is_staff', 'is_active', 'is_verified')
-
-    #what fields to filter by in the admin panel
-    list_filter = ('is_staff', 'is_active')
-
-    #searchable fields in the admin panel
+    list_display = (
+        'id', 'email', 'username', 'firstname', 'lastname',
+        'organisation', 'is_staff', 'is_active', 'is_verified'
+    )
+    list_filter = ('is_staff', 'is_active', 'is_verified')
     search_fields = ('email', 'username', 'firstname', 'lastname')
-
-    #specify the ordering of users
     ordering = ('email',)
+
+    #override add_fieldsets, used when creating a new user
+    add_fieldsets = (
+        (None, {
+            'classes': ('wide',),
+            'fields': (
+                'email', 'username', 'firstname', 'lastname',
+                'password1', 'password2',
+                'is_staff', 'is_active', 'is_verified',
+            ),
+        }),
+    )
+
+    #override fieldsetsused when editing an existing user
+    fieldsets = (
+        (None, {
+            'fields': ('email', 'password'),
+        }),
+        ('Personal info', {
+            'fields': ('username', 'firstname', 'lastname'),
+        }),
+        ('Permissions', {
+            'fields': (
+                'is_active', 'is_staff', 'is_superuser', 'is_verified', 
+                'groups', 'user_permissions',
+            ),
+        }),
+        ('Important dates', {
+            'fields': ('last_login',),
+        }),
+    )
 
 class LikeAdmin(admin.ModelAdmin):
     model = Like
@@ -29,7 +72,7 @@ class LikeAdmin(admin.ModelAdmin):
 
 class ProfileAdmin(admin.ModelAdmin):
     model = Profile
-    list_display = ('id', 'appuser', "aboutme", 'country', 'age', 'gender')
+    list_display = ('id', 'appuser', "aboutme", 'country', 'age', 'gender', 'required_complete')
     list_filter = ('gender', 'country')
     search_fields = ('appuser__email', 'appuser__username', 'country')
 

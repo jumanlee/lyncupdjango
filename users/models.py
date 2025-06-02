@@ -86,7 +86,10 @@ class Profile(models.Model):
         ('F', 'Female'),
         ('NA', 'Unspecified'),
     ], 
-    default='NA') 
+    default='NA')
+
+    #required_complete is a boolean field to indicate whether all the profile's required fields are complete or not.
+    required_complete = models.BooleanField(default=False) 
 
     def __str__(self):
         return self.appuser.email

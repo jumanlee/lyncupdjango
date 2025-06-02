@@ -242,7 +242,30 @@ class UpdateProfileOrgSerializer(serializers.ModelSerializer):
         validated_data.pop("organisation_id", None)
             
         #we need to call thye parent ModelSerializer.update() to save all fields for Profile. Even if validated_data still includes AppUser's model's firstname, etc., they will be silently ignored
-        return super().update(instance, validated_data)
+        #here, the update has already been implemented
+        profile = super().update(instance, validated_data)
+
+        #now check each “required” field manually
+        fields_ok = [
+            profile.aboutme is not None and profile.aboutme != "",
+            profile.country is not None,
+            profile.age is not None,
+            profile.gender is not None and profile.gender != "NA",
+            profile.appuser.firstname is not None and profile.appuser.firstname != "",
+            profile.appuser.lastname is not None and profile.appuser.lastname != "",
+            #organisation is optional, so no need to check it
+        ]
+
+        #all(iterable) returns True only if every item in the iterable (e.g. list) is True
+        if all(fields_ok):
+            profile.required_complete = True
+        else:
+            profile.required_complete = False
+
+        profile.save()
+
+        #here, we're just returning the updated profile instance, which will be serialized by DRF, go through to_representation, and returned in the response.
+        return profile
 
     #DRF’s ModelSerializer.to_representation() just takes the model fields defined in fields and runs their serializer fields’ .to_representation() methods to build the response.
     #as we define write only for firstname and lastname, the response data would'nt include those, so we need to override to_representation to include:
