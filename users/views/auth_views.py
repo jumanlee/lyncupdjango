@@ -6,14 +6,14 @@ from rest_framework import status
 from rest_framework import generics
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import mixins
-from .auth_serializers import *
+from users.serializers.auth_serializers import *
 from django.shortcuts import get_object_or_404
 from django.utils.timezone import now
 from django.contrib.auth import get_user_model 
 from django.core.exceptions import ValidationError
 from django.http import Http404
 from users.models import *
-from .utils import send_verification_email, send_password_reset
+from users.utils import send_verification_email, send_password_reset
 from django.utils.http import urlsafe_base64_decode
 from django.utils.encoding import force_str
 from django.contrib.auth.tokens import default_token_generator
@@ -26,7 +26,7 @@ from django.conf import settings
 from rest_framework.throttling import AnonRateThrottle
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError as DjangoValidationError
-from users.aux_func.aux_views import IsVerified
+from .aux_views import IsVerified
 
 
 #no need for Login view as we're using JWT and it's already handled by djangorestframework-simplejwt. see main lyncup folder's urls.py

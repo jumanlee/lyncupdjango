@@ -6,7 +6,7 @@ from rest_framework import status
 from rest_framework import generics
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import mixins
-from .chat_serializers import *
+from users.serializers.like_serializers import *
 from django.shortcuts import get_object_or_404
 from django.utils.timezone import now
 from django.contrib.auth import get_user_model 
@@ -25,7 +25,7 @@ from django.conf import settings
 from rest_framework.throttling import AnonRateThrottle
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError as DjangoValidationError
-from users.aux_func.aux_views import IsVerified
+from .aux_views import IsVerified
 
 
 

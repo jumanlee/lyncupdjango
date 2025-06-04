@@ -123,11 +123,11 @@ def run_matching_algo():
         retrieved_user_ids = list(users_queryset.values_list('id', flat=True))
         logger.info("Found %d valid users in queue", len(retrieved_user_ids))
 
-        # #commented out to enable easier testing (using fewer users) in development mode. 
-        # #comment out in production mode!
-        # if len(retrieved_user_ids) < 1:
-        #     logger.debug("Not enough users to match.")
-        #     return
+        #commented out to enable easier testing (using fewer users) in development mode. 
+        #comment out in production mode!
+        if len(retrieved_user_ids) < 2:
+            logger.debug("Not enough users to match.")
+            return
 
 
         #this automatically initialises "global" and "leftover" queues

@@ -1,9 +1,6 @@
 from django.urls import path
 from django.views.generic import TemplateView
-from users.app_func import app_views 
-from users.aux_func import aux_views
-from users.chat_func import chat_views
-from users.auth_func import auth_views
+from users.views import app_views, aux_views, like_views, auth_views
 
 #note juman, change all of these to DefaultRouter()
 
@@ -17,8 +14,8 @@ urlpatterns = [
     path('change-password-authenticated/', auth_views.ChangePasswordAuthenticatedView.as_view(), name='change-password-authenticated'),
 
 
-    path('like/', chat_views.LikeView.as_view(), name='like_api'),
-    path('unlike/', chat_views.UnlikeView.as_view(), name='unlike_api'),
+    path('like/', like_views.LikeView.as_view(), name='like_api'),
+    path('unlike/', like_views.UnlikeView.as_view(), name='unlike_api'),
     path("checkprofilecomplete/", app_views.CheckProfileCompleteView.as_view(), name='checkprofilecomplete_api'),
     path("updateprofile/", app_views.UpdateProfileView.as_view(), name='updateprofile_api'),
     path("showprofile/<int:appuser_id>/", app_views.ShowProfileView.as_view(), name='showprofile_api'),
