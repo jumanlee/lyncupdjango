@@ -1,64 +1,8 @@
 from rest_framework import serializers
-from .models import *
-
-#ths RegisterSerializer code is originally written by me but taken from my own project for Advanced Web Develoopment
-class RegisterSerializer(serializers.ModelSerializer):
-
-    #write only ensures the field can only be written in but not read from. This is to ensure security
-    password = serializers.CharField(write_only=True)
-    password2 = serializers.CharField(write_only=True)
-
-    class Meta:
-        model = AppUser
-
-        fields = ['email', 'username', 'firstname', 'lastname', 'password', 'password2']
-
-        #make them all required
-        extra_kwargs = {
-            'firstname': {'required': True},
-            'lastname': {'required': True},
-            'username': {'required': True},
-            'email': {'required': True},
-        }
-
-    # .create() method in serializer is called when serializer.save() is executed inside perform_create() in views.py.
-    def create(self, validated_data):
-
-        password2 = validated_data.pop('password2')
-
-        password = validated_data.pop('password')
-
-        if not password or not password2:
-            raise serializers.ValidationError({"password": "No password entered!"})
-
-        if password != password2:
-            raise serializers.ValidationError({"password2": "Passwords do not match!"})
-
-        appuser = AppUser.objects.create_user(
-            email=validated_data["email"],
-            username=validated_data['username'],
-            #password doesn't need set_password to hash as AppUserManager's create_user already does it for us. set_password is only needed if we save password outside create_user
-            password=password,
-            firstname=validated_data['firstname'],
-            lastname=validated_data['lastname'],
-        )
-
-        #the below not needed anymore as we are putting it in create_user above
-        # #properly hash password
-        # appuser.set_password(password)
-        # appuser.save()
-
-        #now create the associated profile object
-        Profile.objects.create(appuser=appuser)
-
-        return appuser
-
-
-class LikeSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Like
-        #we only need the person that is liked. 
-        fields = ['user_to']
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+from users.models import *
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError as DjangoValidationError
 
 
 class OrganisationSerializer(serializers.ModelSerializer):
@@ -71,6 +15,11 @@ class AppUserNameSerializer(serializers.ModelSerializer):
         model = AppUser
         fields = ["firstname", "lastname"]
 
+class CountrySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Country
+        fields = ["id", "name"]
+
 
 class UpdateProfileOrgSerializer(serializers.ModelSerializer):
     
@@ -81,20 +30,32 @@ class UpdateProfileOrgSerializer(serializers.ModelSerializer):
     organisation_id = serializers.PrimaryKeyRelatedField(
         queryset=Organisation.objects.all(),
         required=False,
-        #commented out write_only cuz we want it to be read and write allowed as user needs to be able to see it!
+        #commented out write_only cuz we want it to be read and write allowed as user needs to be able to see it! React side needs the repsonse data!
         # write_only=True
+        allow_null=True
     )
 
-    #it's important to include write_only=True as we are going to pop these from validated_data, by specifying its write_only, DRF return super().update(instance, validated_data) will not throw an error when these are not in validated_data.
+    country_id = serializers.PrimaryKeyRelatedField(
+        source="country",
+        queryset=Country.objects.all(),
+        required=False,
+        allow_null=True
+    )
+
+    #it's important to include write_only=True as we are going to pop these from validated_data (because those fields do not belong to the Profile model), by specifying its write_only, DRF return super().update(instance, validated_data) will not throw an error when these are not in validated_data. REMEMBER first/last names are able to be edited by the user. write_only will not include these fields in the output response, so we need to override to_representation() to include them in the output.
     firstname = serializers.CharField(required=True, write_only=True)
     lastname = serializers.CharField(required=True, write_only=True)
 
-    organisation_name = serializers.CharField(source="appuser.organisation.name", read_only=True)
+    #we don’t need to pop("organisation_name") because read-only fields never make it into validated_data, unlike firstname and lastname, users are NOT supposed to edit this, therefore read_only.
+    organisation_name = serializers.CharField(source="appuser.organisation.name", read_only=True, required=False, allow_null=True)
+
+    #when serializing this Profile, look at profile.country (the related object), go into its .name field, and include it in the output under the key country_name
+    country_name = serializers.CharField(source="country.name", read_only=True, required=False, allow_null=True)
 
     class Meta:
         model = Profile
 
-        fields = ["firstname", "lastname", "aboutme", 'citytown', 'country', 'age', 'gender', "organisation_id", "organisation_name"]
+        fields = ["firstname", "lastname", "aboutme", 'country_id', 'country_name', 'age', 'gender', "organisation_id", "organisation_name"]
 
     #Note: both PUT (full update) and PATCH (partial update) use the same update() method in the serializer. This is called within perform_update in views, UpdateMixin. 
     #overriding this is to allow the user to change their associated orgniasaitoin if they want to. 
@@ -110,8 +71,9 @@ class UpdateProfileOrgSerializer(serializers.ModelSerializer):
         appUserUpdated = False
 
         if org_field is not serializers.empty and org_field is not None:
-                instance.appuser.organisation = org_field
-                appUserUpdated = True 
+            #whether it's an Organisation instance or None, assign it
+            instance.appuser.organisation = org_field
+            appUserUpdated = True 
 
         #we need to single out these updates as these are not Profile related updates, these are on AppUser.
         if "firstname" in validated_data or "lastname" in validated_data:
@@ -127,8 +89,32 @@ class UpdateProfileOrgSerializer(serializers.ModelSerializer):
         validated_data.pop("organisation_id", None)
             
         #we need to call thye parent ModelSerializer.update() to save all fields for Profile. Even if validated_data still includes AppUser's model's firstname, etc., they will be silently ignored
-        return super().update(instance, validated_data)
+        #here, the update has already been implemented
+        profile = super().update(instance, validated_data)
 
+        #now check each “required” field manually
+        fields_ok = [
+            profile.aboutme is not None and profile.aboutme != "",
+            profile.country is not None,
+            profile.age is not None,
+            profile.gender is not None and profile.gender != "NA",
+            profile.appuser.firstname is not None and profile.appuser.firstname != "",
+            profile.appuser.lastname is not None and profile.appuser.lastname != "",
+            #organisation is optional, so no need to check it
+        ]
+
+        #all(iterable) returns True only if every item in the iterable (e.g. list) is True
+        if all(fields_ok):
+            profile.required_complete = True
+        else:
+            profile.required_complete = False
+
+        profile.save()
+
+        #here, we're just returning the updated profile instance, which will be serialized by DRF, go through to_representation, and returned in the response.
+        return profile
+
+    #DRF’s ModelSerializer.to_representation() just takes the model fields defined in fields and runs their serializer fields’ .to_representation() methods to build the response.
     #as we define write only for firstname and lastname, the response data would'nt include those, so we need to override to_representation to include:
     def to_representation(self, instance):
         res = super().to_representation(instance)
@@ -149,22 +135,15 @@ class ShowProfileOrgSerializer(serializers.ModelSerializer):
     organisation_id = serializers.IntegerField(source="appuser.organisation.id", read_only=True)
     organisation_name = serializers.CharField(source="appuser.organisation.name", read_only=True)
 
+    country_id = serializers.IntegerField(source="country.id", read_only=True)
+    country_name = serializers.CharField(source="country.name", read_only=True)
+
     class Meta:
         model = Profile
-        fields = ["user_id", "firstname", "lastname", "aboutme", 'citytown', 'country', 'age', 'gender', "organisation_id", "organisation_name"]
+        fields = ["user_id", "firstname", "lastname", "aboutme", 'country_id', 'country_name', 'age', 'gender', "organisation_id", "organisation_name"]
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+class AddRequestSerializer(serializers.ModelSerializer):
+        class Meta:
+            model = AddRequest
+            fields = ["user_from", "user_to"]
+        

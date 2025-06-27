@@ -9,17 +9,44 @@ from .models import *
 class CustomUserAdmin(UserAdmin):
     model = AppUser
 
-    #what fields to display
-    list_display = ('id', 'email', 'username', 'firstname', 'lastname', 'organisation', 'is_staff', 'is_active')
-
-    #what fields to filter by in the admin panel
-    list_filter = ('is_staff', 'is_active')
-
-    #searchable fields in the admin panel
+    list_display = (
+        'id', 'email', 'username', 'firstname', 'lastname',
+        'organisation', 'is_staff', 'is_active', 'is_verified'
+    )
+    list_filter = ('is_staff', 'is_active', 'is_verified')
     search_fields = ('email', 'username', 'firstname', 'lastname')
-
-    #specify the ordering of users
     ordering = ('email',)
+
+    #override add_fieldsets, used when creating a new user
+    add_fieldsets = (
+        (None, {
+            'classes': ('wide',),
+            'fields': (
+                'email', 'username', 'firstname', 'lastname',
+                'password1', 'password2',
+                'is_staff', 'is_active', 'is_verified',
+            ),
+        }),
+    )
+
+    #override fieldsetsused when editing an existing user
+    fieldsets = (
+        (None, {
+            'fields': ('email', 'password'),
+        }),
+        ('Personal info', {
+            'fields': ('username', 'firstname', 'lastname'),
+        }),
+        ('Permissions', {
+            'fields': (
+                'is_active', 'is_staff', 'is_superuser', 'is_verified', 
+                'groups', 'user_permissions',
+            ),
+        }),
+        ('Important dates', {
+            'fields': ('last_login',),
+        }),
+    )
 
 class LikeAdmin(admin.ModelAdmin):
     model = Like
@@ -29,17 +56,23 @@ class LikeAdmin(admin.ModelAdmin):
 
 class ProfileAdmin(admin.ModelAdmin):
     model = Profile
-    list_display = ('id', 'appuser', "citytown", "aboutme", 'country', 'age', 'gender')
+    list_display = ('id', 'appuser', "aboutme", 'country', 'age', 'gender', 'required_complete')
     list_filter = ('gender', 'country')
-    search_fields = ('appuser__email', 'appuser__username', 'citytown', 'country')
+    search_fields = ('appuser__email', 'appuser__username', 'country')
 
 class OrganisationAdmin(admin.ModelAdmin):
     model = Organisation
-    list_display = ('id', 'name', 'citytown', 'country', 'date_created')
-    search_fields = ('name', 'citytown', 'country')
+    list_display = ('id', 'name', 'country', 'date_created')
+    search_fields = ('name', 'country')
+
+class CountryAdmin(admin.ModelAdmin):
+    model = Country
+    list_display = ('id', 'name')
+    search_fields = ('name',)
 
 
 admin.site.register(AppUser, CustomUserAdmin)
 admin.site.register(Like, LikeAdmin)
 admin.site.register(Profile, ProfileAdmin)
 admin.site.register(Organisation, OrganisationAdmin)
+admin.site.register(Country, CountryAdmin)

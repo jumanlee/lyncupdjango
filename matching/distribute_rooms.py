@@ -9,33 +9,26 @@ def distribute_rooms(grouped_users: Dict[str, List['UserEntry']], redis_client
 
     matched_groups = []
     users_in_matched_groups = []
-    #get the existing rooms being used now from Redis
-    try:
-        roomsSet = redis_client.smembers("rooms")
-    except Exception as error:
-        print(error)
-        roomsSet = set()
-    
+
+    #no need try catch block with .incr() as it will create the key if it does not exist, won't throw error. incr() already returns an int, so int(...) is redundant.
+    #note "last_room_id" is stored in a Redis string, not a set, list, hash, or anything else, unlike what we have done with the queue. 
+    #if last_room_id doesn't already exist, it will be 0 automatically
+    last_room_id = redis_client.incr("last_room_id")
+
     #keep getting a room id not being used now
     for cluster_id, groups_in_cluster in grouped_users.items():
         # if cluster_id == "leftover":
         #     continue
 
         for group in groups_in_cluster:
-            #temporary solution, may change to more efficient sequential method for id allocation
-            random_roomId = random.randint(1,99999)
-            while str(random_roomId) in roomsSet:
-                random_roomId = random.randint(1,99999)
+            # atomic counter to prevent race conditions. If "last_room_id" doesn’t exist in Redis, Redis will create it with value 0, then increment result to 1, if "last_room_id" already exists, Redis increments the existing integer by 1.
+            new_room_id = redis_client.incr("last_room_id")  
 
-            matched_group = {"room_id": random_roomId, "user_ids": []}
+            matched_group = {"room_id": new_room_id, "user_ids": []}
             
             for user_entry in group:
                 matched_group["user_ids"].append(user_entry.user_id)
                 users_in_matched_groups.append(user_entry.user_id)
-
-            
-            redis_client.sadd("rooms", str(random_roomId))
-            roomsSet.add(str(random_roomId))
 
             matched_groups.append(matched_group)
 

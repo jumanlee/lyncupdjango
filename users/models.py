@@ -42,14 +42,17 @@ class AppUser(AbstractBaseUser, PermissionsMixin):
     firstname = models.CharField(max_length=150, blank=False, null=False)
     lastname = models.CharField(max_length=150, blank=False, null=False)
     is_staff = models.BooleanField(default=False)
+    is_verified = models.BooleanField(default=False)
     #is_active is built-in
     is_active = models.BooleanField(default=True)
     is_oneline = models.BooleanField(default=False)
+
+    #deliberate design choice to make organisation an attribute of AppUSer, rather than Profile, as this may be used for easy filtering of users and also user credentials (requiring work email to sign up to ensure genuine remote workers) being linked closely to their company. 
     organisation = models.ForeignKey("Organisation", on_delete=models.SET_NULL, null=True, blank=True, related_name="appusers")
 
     objects = AppUserManager()
 
-    #  email is not included in REQUIRED_FIELDS because it is already defined as the USERNAME_FIELD. 
+    #email is not included in REQUIRED_FIELDS because it is already defined as the USERNAME_FIELD. 
     #Because I defined the USERNAME_FIELD as email here, the simple default JWT authentication takes in email as the username when user requests for token. 
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ['username', 'firstname', 'lastname']
@@ -70,10 +73,11 @@ class AppUser(AbstractBaseUser, PermissionsMixin):
 class Profile(models.Model):
 
     appuser = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="profile")
+
+    #country is an optional field, so better to be an attr of profile than appuser
+    country = models.ForeignKey("Country", on_delete=models.SET_NULL, null=True, blank=True, related_name="profile")
     status = models.TextField(blank=True, null=True)
     aboutme = models.TextField(blank=True, null=True)  
-    citytown = models.CharField(max_length=100, blank=True, null=True)
-    country = models.CharField(max_length=100, blank=True, null=True)    
     age = models.IntegerField(blank=True, null=True)
 
     gender = models.CharField(max_length=2, 
@@ -82,7 +86,10 @@ class Profile(models.Model):
         ('F', 'Female'),
         ('NA', 'Unspecified'),
     ], 
-    default='NA') 
+    default='NA')
+
+    #required_complete is a boolean field to indicate whether all the profile's required fields are complete or not.
+    required_complete = models.BooleanField(default=False) 
 
     def __str__(self):
         return self.appuser.email
@@ -117,8 +124,7 @@ class Like(models.Model):
 class Organisation(models.Model):
     name = models.CharField(max_length=100, unique=True)
     description = models.TextField(blank=True, null=True)
-    citytown = models.CharField(max_length=100, blank=True, null=True)
-    country = models.CharField(max_length=100, blank=True, null=True)
+    country = models.ForeignKey("Country", on_delete=models.SET_NULL, null=True, blank=True, related_name="organisation")
     date_created = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
@@ -128,36 +134,40 @@ class Organisation(models.Model):
     # org = Organisation.objects.get(name="Strawberry Corp")
     # org_members = org.appusers.all() 
 
+class Country(models.Model):
+    name = models.CharField(max_length=100, unique=True)
+
+#below are for future development
+class Friendship(models.Model):
+    #[self]one to one field cuz one appuser can only have one entry appuser. Note that one row/entry represents one "friend list" for the relevant appuser
+    appuser = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="friendship")
+
+    #symetrical false is to make sure ocan't add themselves as friends. 
+    appfriends = models.ManyToManyField(settings.AUTH_USER_MODEL, blank=True, related_name="appfriends", symmetrical=False ) 
+
+    def __str__(self):
+        return self.appuser.email
+
+    def username(self):
+        return self.appuser.username
+
+class AddRequest(models.Model):
+    #[self] foreignkey rather than one to one cuz one AppUser instance can have many userfrom entries (more like one to many) in the table.
+
+    #settings.Auth User Model means it is linked to the AppUser model defined above. This is an instance of AppUser. Note that when working with ForeignKeys, they are represented as model instances. But when you serialise a model, the ForeignKey is usually serialised to the ID of the related object.
+    user_from = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="user_from")
+
+    user_to = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="user_to")
+
+    date_time = models.DateTimeField(auto_now_add=True)
+
+    ongoing = models.BooleanField(blank=False, default=True, null=False)
+
+    def __str__(self):
+        return self.user_from.email
 
 
-## Note: below code is not in use but may be needed for future development, commenting out for now
-# class Friendship(models.Model):
-#     #[self]one to one field cuz one appuser can only have one entry appuser. Note that one row/entry represents one "friend list" for the relevant appuser
-#     appuser = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="friendship")
 
-#     #symetrical false is to make sure ocan't add themselves as friends. 
-#     appfriends = models.ManyToManyField(settings.AUTH_USER_MODEL, blank=True, related_name="appfriends", symmetrical=False ) 
-
-#     def __str__(self):
-#         return self.appuser.email
-
-#     def username(self):
-#         return self.appuser.username
-
-# class AddRequest(models.Model):
-#     #[self] foreignkey rather than one to one cuz one AppUser instance can have many userfrom entries (more like one to many) in the table.
-
-#     #settings.Auth User Model means it is linked to the AppUser model defined above. This is an instance of AppUser. Note that when working with ForeignKeys, they are represented as model instances. But when you serialise a model, the ForeignKey is usually serialised to the ID of the related object.
-#     user_from = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="user_from")
-
-#     user_to = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="user_to")
-
-#     date_time = models.DateTimeField(auto_now_add=True)
-
-#     ongoing = models.BooleanField(blank=False, default=True, null=False)
-
-#     def __str__(self):
-#         return self.user_from.email
 
 
 

@@ -41,6 +41,8 @@ def match_in_cluster(cluster_id, queue_manager, base_dir=None, batch_size=50, to
         #try to get top-k from Annoy. if not in user_index map, then skip this user
         #important: dumping map into JSON will alays turn the key into string, even though it was first saved as int! Therefore, to search in the user_index_map, we need to convert it to str!
         if str(user_id) not in user_index_map:
+            #if user not in map, then push to leftover queue. When a new user has just signed up, they will not have any data in the Likes table, so they will not be in the map. So we need to push them to the leftover queue for random matching.
+            queue_manager.add("leftover", user_id)
             continue
 
         user_index = user_index_map[str(user_id)]

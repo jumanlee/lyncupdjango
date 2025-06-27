@@ -11,7 +11,10 @@ services:
       - postgres
       - redis
       - migrate  #ensure migrations run first
+    env_file:
+      - .env
 
+    #can uncomment since we have .env file above
     environment:
       DB_NAME: ${DB_NAME}
       DB_USER: ${DB_USER}
@@ -37,6 +40,13 @@ services:
     container_name: django_migrations
     command: python manage.py migrate --noinput
 
+    ##I could include makemigrations here, but it would run every time the container starts, which is not ideal, as sometimes I may make some changes but not yet final/not yet ready to be migrated. Nevertheless, putting this here so to remind that this is an option.
+    # command: >
+    #   sh -c "
+    #     python manage.py makemigrations --noinput &&
+    #     python manage.py migrate --noinput
+    #   "
+
 
     ## Runs migrations, then creates a superuser
     # command: >
@@ -47,6 +57,8 @@ services:
     #   '
     depends_on:
       - postgres
+    env_file:
+      - .env
     environment:
       DB_HOST: postgres
       DB_PORT: ${DB_PORT}
@@ -86,6 +98,8 @@ services:
     build: .
     container_name: celery_worker
     command: celery -A lyncup worker --loglevel=info
+    env_file:
+      - .env
     volumes:
       - .:/usr/src/app
     depends_on:
@@ -106,6 +120,8 @@ services:
     build: .
     container_name: celery_beat
     command: celery -A lyncup beat --loglevel=info --scheduler django_celery_beat.schedulers:DatabaseScheduler
+    env_file:
+      - .env
     volumes:
       - .:/usr/src/app
     depends_on:

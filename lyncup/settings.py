@@ -58,6 +58,7 @@ INSTALLED_APPS = [
     'users',
     'chat',
     'matching',
+    'direct_message',
 
 
 
@@ -97,7 +98,11 @@ REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
 
         'rest_framework_simplejwt.authentication.JWTAuthentication',
-    )
+    ),
+    'DEFAULT_THROTTLE_RATES': {
+        'anon': '5/minute',
+        'user': '1000/day', 
+  }
 }
 
 MIDDLEWARE = [
@@ -266,12 +271,54 @@ SIMPLE_JWT = {
     "SLIDING_TOKEN_LIFETIME": timedelta(minutes=5),
     "SLIDING_TOKEN_REFRESH_LIFETIME": timedelta(days=1),
 
-    "TOKEN_OBTAIN_SERIALIZER": "rest_framework_simplejwt.serializers.TokenObtainPairSerializer",
+    # "TOKEN_OBTAIN_SERIALIZER": "rest_framework_simplejwt.serializers.TokenObtainPairSerializer",
+
+    #do not need to add an import VerifiedTokenObtainPairSerializer in your settings.py, cuz we're passing it as a dotted-path string, Django will import it for us at runtime. 
+    "TOKEN_OBTAIN_SERIALIZER": "users.serializers.VerifiedTokenObtainPairSerializer",
     "TOKEN_REFRESH_SERIALIZER": "rest_framework_simplejwt.serializers.TokenRefreshSerializer",
     "TOKEN_VERIFY_SERIALIZER": "rest_framework_simplejwt.serializers.TokenVerifySerializer",
     "TOKEN_BLACKLIST_SERIALIZER": "rest_framework_simplejwt.serializers.TokenBlacklistSerializer",
     "SLIDING_TOKEN_OBTAIN_SERIALIZER": "rest_framework_simplejwt.serializers.TokenObtainSlidingSerializer",
     "SLIDING_TOKEN_REFRESH_SERIALIZER": "rest_framework_simplejwt.serializers.TokenRefreshSlidingSerializer",
+}
+
+#for email verification
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+
+#can swap for below for local testing and Django will just print the email body to the terminal:
+# EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+
+EMAIL_HOST = config("EMAIL_HOST", default="smtp.gmail.com")
+EMAIL_PORT = config("EMAIL_PORT", default=587, cast=int)
+EMAIL_HOST_USER = config("EMAIL_HOST_USER")
+EMAIL_HOST_PASSWORD = config("EMAIL_HOST_PASSWORD")
+EMAIL_USE_TLS = config("EMAIL_USE_TLS", default=True, cast=bool)
+
+#base URL where React frontend handles email verification
+#It forms the beginning of the link the user clicks to confirm their email, like this:
+#http://localhost:5173/verify-email/<uidb64>/<token>
+# FRONTEND_VERIFY_URL = "http://localhost:5173/verify-email"  
+BACKEND_VERIFY_URL = "http://localhost:8080/api/users/verify-email"
+FRONTEND_VERIFY_SUCCESS_URL = "http://localhost:5173/verify-success"
+FRONTEND_VERIFY_FAIL_URL = "http://localhost:5173/verify-fail"
+
+FRONTEND_RESET_PASSWORD_URL = "http://localhost:5173/reset-password"
+FRONTEND_RESET_PASSWORD_FAIL_URL = "http://localhost:5173/reset-password-fail"
+
+
+#for logging, added 26 May 2025
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+        },
+    },
+    'root': {
+        'handlers': ['console'],
+        'level': 'DEBUG',  # or 'INFO'
+    },
 }
 
 
