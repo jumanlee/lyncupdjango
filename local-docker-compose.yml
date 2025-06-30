@@ -1,32 +1,18 @@
-version: "3.9"
 services:
   django:
-    # build: .
-    image: jumanlee/lyncup-django-repo:latest
+    build: .
     container_name: django_app
     command: daphne -b 0.0.0.0 -p 8080 lyncup.asgi:application
-
-    #the following volume means "Take the current host directory (that . = current folder) and mount it inside the container at /usr/src/app.", but this causes problem if deployed on EC2 as on local machine, . means the app source code (with manage.py, lyncup/, etc.). But on EC2, when I clone or pull your repo, that . folder is usually empty or missing most code unless I copied it up manually. So when Docker runs this: .:/usr/src/app, it means replace everything at /usr/src/app inside the container with whatever is in the EC2 host's current folder (.), If that EC2 folder is empty = you wipe out the code inside the image. Therefore when deployed on EC2, must remove the following line, commented out! We're already pulling from docker hub, the image already has the code.
-    # volumes:
-    #   - .:/usr/src/app
-
+    volumes:
+      - .:/usr/src/app
     ports:
       - "8080:8080"
     depends_on:
-      # - postgres
-      # - redis
-      # - migrate  #ensure migrations run first
-      migrate:
-        condition: service_completed_successfully
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
+      - postgres
+      - redis
+      - migrate  #ensure migrations run first
     env_file:
       - .env
-
-    restart: always
-
 
     #can uncomment since we have .env file above
     environment:
@@ -47,20 +33,12 @@ services:
 # The migrate service runs once, applies migrations, and exits.
 # The django service waits until migrate finishes before starting.
 # When restart the django container, migrations won't run again because the migrate service isn’t restarted
-# Caution! Dangerous error which could wipe out Organisation values and others: migrate automatically wipes out Organisation field value on AppUser due to (python manage.py loaddata lyncup/fixtures/initial_data.json || echo "No fixture" or data already loaded"). Therefore, I've commented out the loaddata command, which I think is better executed manually when needed.
+# Caution! Dangerous error which could wipe out Organisation values and others: migrate automatically wipes out Organisation field value on AppUser due to (python manage.py loaddata lyncup/fixtures/initial_data.json || echo "No fixture or data already loaded"). Therefore, I've commented out the loaddata command, which I think is better executed manually when needed.
 
   migrate:
-    # build: .
-    image: jumanlee/lyncup-django-repo:latest
+    build: .
     container_name: django_migrations
-    # command: python manage.py migrate --noinput
-    command: >
-      sh -c "
-        python manage.py migrate --noinput &&
-        python manage.py collectstatic --noinput
-      "
-
-    restart: "no"
+    command: python manage.py migrate --noinput
 
     ##I could include makemigrations here, but it would run every time the container starts, which is not ideal, as sometimes I may make some changes but not yet final/not yet ready to be migrated. Nevertheless, putting this here so to remind that this is an option.
     # command: >
@@ -77,22 +55,13 @@ services:
     #     (python manage.py loaddata lyncup/fixtures/initial_data.json || 
     #     echo "No fixture or data already loaded")
     #   '
-    # depends_on:
-    #   - postgres
     depends_on:
-      postgres:
-        condition: service_healthy
+      - postgres
     env_file:
       - .env
     environment:
       DB_HOST: postgres
       DB_PORT: ${DB_PORT}
-
-      DB_NAME: ${DB_NAME}
-      DB_USER: ${DB_USER}
-      DB_PASSWORD: ${DB_PASSWORD}
-      SECRET_KEY: ${SECRET_KEY}
-
       REDIS_HOST: redis
       REDIS_PORT: 6379
 
@@ -106,8 +75,7 @@ services:
       POSTGRES_PASSWORD: ${DB_PASSWORD}
 
     volumes:
-      # - postgres_data:/var/lib/postgresql/data
-      - /data/postgres:/var/lib/postgresql/data   # ← NEW — on EBS
+      - postgres_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD", "pg_isready", "-U", "${DB_USER}", "-d", "${DB_NAME}"]
       interval: 35s
@@ -127,27 +95,17 @@ services:
       retries: 3
 
   celery:
-    # build: .
-    image: jumanlee/lyncup-django-repo:latest
+    build: .
     container_name: celery_worker
     command: celery -A lyncup worker --loglevel=info
-    restart: always
     env_file:
       - .env
-    # volumes:
-    #   - .:/usr/src/app
-    # depends_on:
-    #   - django
-    #   - redis
-    #   - postgres
+    volumes:
+      - .:/usr/src/app
     depends_on:
-      django:
-        condition: service_healthy
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-
+      - django
+      - redis
+      - postgres
     environment:
       DB_NAME: ${DB_NAME}
       DB_USER: ${DB_USER}
@@ -159,26 +117,17 @@ services:
       REDIS_PORT: 6379
 
   celerybeat:
-    # build: .
-    image: jumanlee/lyncup-django-repo:latest
+    build: .
     container_name: celery_beat
     command: celery -A lyncup beat --loglevel=info --scheduler django_celery_beat.schedulers:DatabaseScheduler
-    restart: always
     env_file:
       - .env
-    # volumes:
-    #   - .:/usr/src/app
-    # depends_on:
-    #   - django
-    #   - redis
-    #   - postgres
+    volumes:
+      - .:/usr/src/app
     depends_on:
-      django:
-        condition: service_healthy
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
+      - django
+      - redis
+      - postgres
     environment:
       DB_NAME: ${DB_NAME}
       DB_USER: ${DB_USER}
@@ -189,5 +138,5 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: 6379
 
-# volumes:
-#   postgres_data:
+volumes:
+  postgres_data:

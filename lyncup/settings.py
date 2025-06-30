@@ -26,11 +26,15 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = config('SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+# DEBUG = True
+DEBUG = False
 
 # ALLOWED_HOSTS = [ 'localhost','127.0.0.1',]
-ALLOWED_HOSTS = ["localhost", "127.0.0.1", "0.0.0.0", "django"]
+ALLOWED_HOSTS = ["localhost", "127.0.0.1", "0.0.0.0", "django", config("DJANGO_URL")]
 
+CSRF_TRUSTED_ORIGINS = [
+    f"http://{config('DJANGO_URL')}"
+]
 
 
 # Application definition
@@ -298,7 +302,8 @@ EMAIL_USE_TLS = config("EMAIL_USE_TLS", default=True, cast=bool)
 #It forms the beginning of the link the user clicks to confirm their email, like this:
 #http://localhost:5173/verify-email/<uidb64>/<token>
 # FRONTEND_VERIFY_URL = "http://localhost:5173/verify-email"  
-BACKEND_VERIFY_URL = "http://localhost:8080/api/users/verify-email"
+# BACKEND_VERIFY_URL = "http://localhost:8080/api/users/verify-email"
+BACKEND_VERIFY_URL = f"http://{config('DJANGO_URL')}/api/users/verify-email"
 FRONTEND_VERIFY_SUCCESS_URL = "http://localhost:5173/verify-success"
 FRONTEND_VERIFY_FAIL_URL = "http://localhost:5173/verify-fail"
 

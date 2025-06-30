@@ -160,6 +160,9 @@ Annoy/
 #ignore DS_store, no relevance to the project, only for MacOS system files
 .DS_Store
 
+#ignore private key files
+*.pem
+
 # #ignore fixtures folder
 #temporarily allowing this for dummy data only, for app testing purposes.
 # **/fixtures/
