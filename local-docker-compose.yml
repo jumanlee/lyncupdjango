@@ -1,3 +1,5 @@
+#for local development/testing, use the following docker-compose file.
+
 services:
   django:
     build: .
