@@ -99,7 +99,6 @@ celerybeat-schedule.*
 
 # Environments 
 .env 
-*.env.*
 .venv 
 env/ 
 venv/ 
@@ -164,7 +163,8 @@ Annoy/
 #ignore private key files
 *.pem
 
-#ignore fixtures folder
-**/fixtures/
+# #ignore fixtures folder
+#temporarily allowing this for dummy data only, for app testing purposes.
+# **/fixtures/
 
 

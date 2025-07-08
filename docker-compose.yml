@@ -4,7 +4,14 @@ services:
     # build: .
     image: jumanlee/lyncup-django-repo:latest
     container_name: django_app
-    command: daphne -b 0.0.0.0 -p 8080 lyncup.asgi:application
+    # command: daphne -b 0.0.0.0 -p 8080 lyncup.asgi:application
+    #use below command so that django admin can be served when nginx is used.
+    command: >
+      sh -c "
+        python manage.py collectstatic --noinput &&
+        daphne -b 0.0.0.0 -p 8080 lyncup.asgi:application
+      "
+
 
     #the following volume means "Take the current host directory (that . = current folder) and mount it inside the container at /usr/src/app.", but this causes problem if deployed on EC2 as on local machine, . means the app source code (with manage.py, lyncup/, etc.). But on EC2, when I clone or pull your repo, that . folder is usually empty or missing most code unless I copied it up manually. So when Docker runs this: .:/usr/src/app, it means replace everything at /usr/src/app inside the container with whatever is in the EC2 host's current folder (.), If that EC2 folder is empty = you wipe out the code inside the image. Therefore when deployed on EC2, must remove the following line, commented out! We're already pulling from docker hub, the image already has the code.
     # volumes:

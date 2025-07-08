@@ -13,6 +13,7 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 from pathlib import Path
 import os
 from decouple import config
+from corsheaders.defaults import default_headers
 
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -29,12 +30,35 @@ SECRET_KEY = config('SECRET_KEY')
 # DEBUG = True
 DEBUG = False
 
-# ALLOWED_HOSTS = [ 'localhost','127.0.0.1',]
-ALLOWED_HOSTS = ["localhost", "127.0.0.1", "0.0.0.0", "django", config("DJANGO_URL")]
+#commented out localhost
+# ALLOWED_HOSTS = ["localhost", "127.0.0.1", "0.0.0.0", "django", config("DJANGO_URL")]
+
+ALLOWED_HOSTS = ["127.0.0.1", "0.0.0.0", "django", config("DJANGO_URL")]
+
+#commented out localhost
+# CORS_ALLOWED_ORIGINS = ['http://localhost:5173', f"https://{config('FRONTEND_URL')}", f"https://www.{config('FRONTEND_URL')}"]
+
+CORS_ALLOWED_ORIGINS = [f"https://{config('FRONTEND_URL')}", f"https://www.{config('FRONTEND_URL')}"]
 
 CSRF_TRUSTED_ORIGINS = [
-    f"http://{config('DJANGO_URL')}"
+    f"https://{config('DJANGO_URL')}",
+    f"https://www.{config('DJANGO_URL')}",
+    f"https://www.{config('FRONTEND_URL')}",
+    f"https://{config('FRONTEND_URL')}",
 ]
+
+CORS_ALLOW_HEADERS = list(default_headers) + [
+    'Authorization',
+    'Content-Type',
+]
+
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+SESSION_COOKIE_SECURE = True
+CSRF_COOKIE_SECURE = True
+CSRF_COOKIE_SAMESITE = 'None'
+SESSION_COOKIE_SAMESITE = 'None'
+
+CORS_ALLOW_CREDENTIALS = True
 
 
 # Application definition
@@ -68,7 +92,7 @@ INSTALLED_APPS = [
 
 ]
 
-CORS_ALLOWED_ORIGINS = ['http://localhost:5173']
+
 
 REDIS_HOST = config('REDIS_HOST', default="redis")  #fallback to "redis" if not in .env
 REDIS_PORT = config("REDIS_PORT", default='6379')
@@ -137,11 +161,6 @@ CELERY_BROKER_URL = REDIS_URL
 CELERY_RESULT_BACKEND = REDIS_URL
 
 CELERY_RESULT_EXTENDED = True
-
-
-
-
-
 
 
 TEMPLATES = [
@@ -303,12 +322,12 @@ EMAIL_USE_TLS = config("EMAIL_USE_TLS", default=True, cast=bool)
 #http://localhost:5173/verify-email/<uidb64>/<token>
 # FRONTEND_VERIFY_URL = "http://localhost:5173/verify-email"  
 # BACKEND_VERIFY_URL = "http://localhost:8080/api/users/verify-email"
-BACKEND_VERIFY_URL = f"http://{config('DJANGO_URL')}:8080/api/users/verify-email"
-FRONTEND_VERIFY_SUCCESS_URL = "http://localhost:5173/verify-success"
-FRONTEND_VERIFY_FAIL_URL = "http://localhost:5173/verify-fail"
+BACKEND_VERIFY_URL = f"https://{config('DJANGO_URL')}/api/users/verify-email"
+FRONTEND_VERIFY_SUCCESS_URL = f"https://{config('FRONTEND_URL')}/verify-success"
+FRONTEND_VERIFY_FAIL_URL = f"https://{config('FRONTEND_URL')}/verify-fail"
 
-FRONTEND_RESET_PASSWORD_URL = "http://localhost:5173/reset-password"
-FRONTEND_RESET_PASSWORD_FAIL_URL = "http://localhost:5173/reset-password-fail"
+FRONTEND_RESET_PASSWORD_URL = f"https://{config('FRONTEND_URL')}/reset-password"
+FRONTEND_RESET_PASSWORD_FAIL_URL = f"https://{config('FRONTEND_URL')}/reset-password-fail"
 
 
 #for logging, added 26 May 2025
