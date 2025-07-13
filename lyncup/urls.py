@@ -18,6 +18,7 @@ from django.contrib import admin
 from django.urls import path, include
 from django.views.generic import TemplateView
 from django.http import HttpResponse
+from django.conf import settings
 
 #for JWT tokens: https://django-rest-framework-simplejwt.readthedocs.io/en/latest/getting_started.html
 from rest_framework_simplejwt.views import (
@@ -28,7 +29,7 @@ from rest_framework_simplejwt.views import (
 from users.views.auth_views import VerifiedTokenObtainPairView
 
 urlpatterns = [
-    path('admin/', admin.site.urls),
+    path(settings.ADMIN_URL, admin.site.urls),
 
     #react app accesses api, so no need to render any index.html from django
     # path('', TemplateView.as_view(template_name='index.html')),

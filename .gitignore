@@ -164,6 +164,9 @@ Annoy/
 #ignore private key files
 *.pem
 
+#ignore public key files
+*.pub
+
 #ignore fixtures folder
 **/fixtures/
 

@@ -163,6 +163,9 @@ Annoy/
 #ignore private key files
 *.pem
 
+#ignore public key files
+*.pub
+
 # #ignore fixtures folder
 #temporarily allowing this for dummy data only, for app testing purposes.
 # **/fixtures/

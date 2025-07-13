@@ -46,7 +46,11 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: 6379
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080"]
+      # test: ["CMD", "curl", "-f", "http://localhost:8080"]
+      # Healthcheck must spoof Host header as "lyncup.app" because Django checks the HTTP Host header against ALLOWED_HOSTS.
+      # By default, curl sends "Host: localhost", which Django rejects with a DisallowedHost error since "localhost" is not in ALLOWED_HOSTS.
+      # This spoofed header allows the container-internal curl to hit Django without triggering that error.
+      test: ["CMD", "curl", "-H", "Host: lyncup.app", "-f", "http://localhost:8080"]
       interval: 10s
       retries: 3
       start_period: 10s
