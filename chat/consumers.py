@@ -258,7 +258,6 @@ class GroupConsumer(AsyncWebsocketConsumer):
         try:
 
             data = jwt.decode(token, settings.SECRET_KEY, algorithms=["HS256"])
-            print(data)
 
             self.scope["user_id"] = data['user_id']
 
