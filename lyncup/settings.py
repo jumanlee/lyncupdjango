@@ -333,62 +333,43 @@ FRONTEND_RESET_PASSWORD_URL = f"https://{config('FRONTEND_URL')}/reset-password"
 FRONTEND_RESET_PASSWORD_FAIL_URL = f"https://{config('FRONTEND_URL')}/reset-password-fail"
 
 
-#for logging, added 26 May 2025
+#for logging (for enabling logging during development)
+# LOGGING = {
+#     'version': 1,
+#     'disable_existing_loggers': False,
+#     'handlers': {
+#         'console': {
+#             'class': 'logging.StreamHandler',
+#         },
+#     },
+#     'root': {
+#         'handlers': ['console'],
+#         'level': 'DEBUG',  # or 'INFO'
+#     },
+# }
+
+#silence the noisy Django server logs during production
 LOGGING = {
-    'version': 1,
-    'disable_existing_loggers': False,
-    'handlers': {
-        'console': {
-            'class': 'logging.StreamHandler',
+    "version": 1,
+    "disable_existing_loggers": False,
+    "handlers": {
+        "console": {"class": "logging.StreamHandler"},
+    },
+    "loggers": {
+        "django.server": {      #the noisy “GET /… 200” logger
+            "handlers": ["console"],
+            "level": "WARNING", #show warnings and errors only
+            "propagate": False,
+        },
+        "django": {
+            "handlers": ["console"],
+            "level": "WARNING",
         },
     },
-    'root': {
-        'handlers': ['console'],
-        'level': 'DEBUG',  # or 'INFO'
-    },
+    "root": {"handlers": ["console"], "level": "WARNING"},
 }
 
 
 
 
-# settings.py
 
-# LOGGING = {
-#     'version': 1,
-#     'disable_existing_loggers': False,
-#     'formatters': {
-#         'verbose': {
-#             'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
-#             'style': '{',
-#         },
-#         'simple': {
-#             'format': '{levelname} {message}',
-#             'style': '{',
-#         },
-#     },
-#     'handlers': {
-#         'console': {
-#             'class': 'logging.StreamHandler',
-#             'formatter': 'simple',
-#         },
-#         # Optional: Add a file handler for persistent logs
-#         'file': {
-#             'level': 'INFO',
-#             'class': 'logging.FileHandler',
-#             'filename': 'celery_tasks.log',
-#             'formatter': 'verbose',
-#         },
-#     },
-#     'loggers': {
-#         '': {  # Root logger
-#             'handlers': ['console', 'file'],
-#             'level': 'INFO',
-#             'propagate': True,
-#         },
-#         'matching.tasks': {  # Replace 'your_app' with your actual app name
-#             'handlers': ['console', 'file'],
-#             'level': 'INFO',
-#             'propagate': False,
-#         },
-#     },
-# }

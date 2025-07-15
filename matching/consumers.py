@@ -10,7 +10,7 @@ from .tasks import run_matching_algo
 
 class QueueConsumer(AsyncWebsocketConsumer):
     async def connect(self):
-        print("entered connect method")
+        # print("entered connect method")
 
         #assign queue name
 
@@ -20,9 +20,7 @@ class QueueConsumer(AsyncWebsocketConsumer):
 
         self.redis = redis.from_url(settings.REDIS_URL, decode_responses=True)
         query_string = self.scope.get("query_string", b"").decode("utf-8")
-        print(f"Query string: {query_string}") 
-
-
+        # print(f"Query string: {query_string}") 
 
         query_params = parse_qs(query_string)
         # query_params will be:
@@ -76,7 +74,7 @@ class QueueConsumer(AsyncWebsocketConsumer):
             await self.close(code=4123)
             return
 
-        print("wait for scheduled run_matching_algo.delay()")    
+        # print("wait for scheduled run_matching_algo.delay()")    
 
 
     async def disconnect(self, disconnect_code):
@@ -94,8 +92,8 @@ class QueueConsumer(AsyncWebsocketConsumer):
 
             #check what's left in Redis
             membersSet = await self.redis.smembers(self.queue)
-            print("whats left in Redis queue:")
-            print(membersSet)
+            # print("whats left in Redis queue:")
+            # print(membersSet)
 
             # #if no one is left in the group, we must delete the groupname from Redis user tracking
             # if not membersSet:
@@ -120,7 +118,7 @@ class QueueConsumer(AsyncWebsocketConsumer):
             await self.send(text_data=json.dumps({
                 'room_id': room_id
             }))
-            print(f"Sent room assignment to user {self.scope['user_id']}.")
+            # print(f"Sent room assignment to user {self.scope['user_id']}.")
         else:
             print("Incomplete event data received in send_room_id.")
 
@@ -130,7 +128,7 @@ class QueueConsumer(AsyncWebsocketConsumer):
     @database_sync_to_async
     def get_token_user(self, token):
 
-        print("entered get_token_user method")
+        # print("entered get_token_user method")
 
         try:
 

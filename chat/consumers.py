@@ -9,7 +9,7 @@ from urllib.parse import parse_qs
 
 class GroupConsumer(AsyncWebsocketConsumer):
     async def connect(self):
-        print("entered connect method")
+        # print("entered connect method")
 
         #connect to the Redis
         # self.redis = await aioredis.create_redis_pool(settings.REDIS_URL)
@@ -22,7 +22,7 @@ class GroupConsumer(AsyncWebsocketConsumer):
 # default_value: A fallback value to return if the key does not exist in the dictionary.
         #decode so that it becomes string now for easier processing, this will need to be encded back later to bytes
         query_string = self.scope.get("query_string", b"").decode("utf-8")
-        print(f"Query string: {query_string}") 
+        # print(f"Query string: {query_string}") 
 
 #example query_string: "token=abcd1234&room_name=general"
 
@@ -199,8 +199,8 @@ class GroupConsumer(AsyncWebsocketConsumer):
             try:
                 #check what's left in Redis
                 membersSet = await self.redis.smembers(self.groupname)
-                print("whats left in Redis:")
-                print(membersSet)
+                # print("whats left in Redis:")
+                # print(membersSet)
                 #convert back to json object from the returned Set
                 decoded_members = [json.loads(member) for member in membersSet]
                 #format is: [[1, "Mary", "HadALittleLamb"], [2, "Jane", "Monster"], ...]
@@ -253,7 +253,7 @@ class GroupConsumer(AsyncWebsocketConsumer):
     @database_sync_to_async
     def get_token_user(self, token):
 
-        print("entered get_token_user method")
+        # print("entered get_token_user method")
 
         try:
 

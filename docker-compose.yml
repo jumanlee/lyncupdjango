@@ -1,4 +1,3 @@
-version: "3.9"
 services:
   django:
     # build: .
@@ -6,10 +5,19 @@ services:
     container_name: django_app
     # command: daphne -b 0.0.0.0 -p 8080 lyncup.asgi:application
     #use below command so that django admin can be served when nginx is used.
+
+
+    # command: >
+    #   sh -c "
+    #     python manage.py collectstatic --noinput &&
+    #     daphne -b 0.0.0.0 -p 8080 lyncup.asgi:application
+    #   "
+
+    #silenced healthcheck message, only supress sucessful message, not error messages
     command: >
       sh -c "
         python manage.py collectstatic --noinput &&
-        daphne -b 0.0.0.0 -p 8080 lyncup.asgi:application
+        daphne -b 0.0.0.0 -p 8080 --access-log /dev/null lyncup.asgi:application
       "
 
 
@@ -17,8 +25,9 @@ services:
     # volumes:
     #   - .:/usr/src/app
 
+    #we cannot expose 8080 to the world, therefore must include 127.0.0.1
     ports:
-      - "8080:8080"
+      - "127.0.0.1:8080:8080"
     depends_on:
       # - postgres
       # - redis
@@ -54,6 +63,12 @@ services:
       interval: 10s
       retries: 3
       start_period: 10s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
 
 # The migrate service runs once, applies migrations, and exits.
 # The django service waits until migrate finishes before starting.
@@ -124,6 +139,11 @@ services:
       interval: 35s
       retries: 5
       start_period: 10s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   redis:
     image: redis:7
@@ -136,12 +156,20 @@ services:
       interval: 10s
       timeout: 3s
       retries: 3
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   celery:
     # build: .
     image: jumanlee/lyncup-django-repo:latest
     container_name: celery_worker
-    command: celery -A lyncup worker --loglevel=info
+    #disable noisy logging during production
+    # command: celery -A lyncup worker --loglevel=info
+    command: celery -A lyncup worker --loglevel=warning
+
     restart: always
     env_file:
       - .env
@@ -168,12 +196,22 @@ services:
       SECRET_KEY: ${SECRET_KEY}
       REDIS_HOST: redis
       REDIS_PORT: 6379
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   celerybeat:
     # build: .
     image: jumanlee/lyncup-django-repo:latest
     container_name: celery_beat
-    command: celery -A lyncup beat --loglevel=info --scheduler django_celery_beat.schedulers:DatabaseScheduler
+
+    #disable noisy logging during production
+    # command: celery -A lyncup beat --loglevel=info --scheduler django_celery_beat.schedulers:DatabaseScheduler
+
+    command: celery -A lyncup beat --loglevel=warning --scheduler django_celery_beat.schedulers:DatabaseScheduler
+
     restart: always
     env_file:
       - .env
@@ -199,6 +237,11 @@ services:
       SECRET_KEY: ${SECRET_KEY}
       REDIS_HOST: redis
       REDIS_PORT: 6379
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
 # volumes:
 #   postgres_data:
