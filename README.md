@@ -6,19 +6,22 @@ How it works: when users feel ready to network, they simply join a queue. LyncUp
 
 As users continue to participate and privately “Like” those they enjoyed interacting with, the system refines its understanding of their preferences. Over time, this enables increasingly accurate and relevant matches, helping users build deeper, more valuable professional networks.
 
-## Frontend Codebase 
+## Frontend (React) Codebase 
 https://github.com/jumanlee/lyncupreact
 
 ## Table of Contents
 
 - [Software Architecture Overview](#software-architecture-overview)
 - [Database Design](#database-design)
-- [Features Overview](#lyncups-features-overview)
-- [Features Implementation](#lyncups-features-implementation)
-- [Matching Algorithm Implementation](#lyncups-features-implementation)
-- [Evaluation Results](#evaluation-results)
-- [Future Development](#future-development)
-- [Conclusion](#conclusion)
+- [Features Overview](#features-overview)
+- [Features Implementation](#features-implementation)
+- [Matching Algorithm Implementation](#matching-algorithm-implementation)
+- [Software Testing](#software-testing)
+- [Matching Algorithm Performance Evaluation](#matching-algorithm-performance-evaluation)
+- [LyncUp's Viability](#lyncups-viability)
+- [Possible Future Development](#possible-future-development)
+- [References](#references)
+
 
 ## Software Architecture Overview
 
@@ -78,7 +81,7 @@ using two many-to-one foreign keys pointing to AppUser. This allows a user to li
 others and be liked by many others, with additional fields like like_count and last_like_date
 stored in the Like model.
 
-## Lyncup's Features Overview
+## Features Overview
 
 Queue button UI:
 
@@ -110,7 +113,7 @@ Technically speaking, LyncUp’s challenge is how computationally feasible this 
 
 LyncUp converts its “Like” data, which are user interaction data collected from each chat session and stored in the PostgresSQL database, into a graph, using Node2Vec, a graph-embedding algorithm. [23][24]. This graph is then converted to a fixed-vector representation, which is then used as an input for ANN indexing. This processes generates an ANN file, which enables the system to find the top-k most similar users for matching.
 
-## LyncUp's Feature Implementation
+## Features Implementation
 
 Users enter a queue and are dynamically matched before being automatically directed to a chatroom where they can engage in discussions. A key feature of the platform is the “Like” system, which allows users to indicate positive interactions with another user by pressing a thumbs-up button. These interactions are recorded and used to improve future matches, ensuring that users are more likely to be paired with other users that they have previously liked. Over time, this system learns to make better matches as increasing “Like” data become available. 
 
@@ -170,7 +173,9 @@ For context, here is an example of a dataset from the Like model:
 
 ![Dataset](readme_images/data.png)
 
-First, the create_graph_from_likes(likes_df, reciprocal_weight=0.5) function uses the data queried from the Like model and builds a directed graph where each node represents a user and edges represent “Like” interactions. If user 1 has liked user 38, an edge is created from user 1 to user 38, with weight representing the number of likes. If there is no reciprocal like from 38 to 1, a weaker reverse edge is added with a reduced weight (e.g. *0.5). This ensures that one-sided likes have a weaker influence compared to mutual interactions. For context, we initially considered building a sparse matrix from the Like interaction dataset instead of this graph-based approach. However, because Annoy requires a dense matrix as an input, this would involve constructing an NxN matrix, where each row and column represents a user and the values indicate the strength of “Like” interactions between then, for example: 
+First, the create_graph_from_likes(likes_df, reciprocal_weight=0.5) function uses the data queried from the Like model and builds a directed graph where each node represents a user and edges represent “Like” interactions. If user 1 has liked user 38, an edge is created from user 1 to user 38, with weight representing the number of likes. If there is no reciprocal like from 38 to 1, a weaker reverse edge is added with a reduced weight (e.g. *0.5). This ensures that one-sided likes have a weaker influence compared to mutual interactions. 
+
+For context, we initially considered building a sparse matrix from the Like interaction dataset instead of this graph-based approach. However, because Annoy requires a dense matrix as an input, this would involve constructing an NxN matrix, where each row and column represents a user and the values indicate the strength of “Like” interactions between then, for example: 
 
 ```python
 dense_like_data = [
@@ -244,3 +249,233 @@ The function then outputs a tuple containing matched_groups and users_in_matched
 Once rooms are assigned, Celery workers pass each user's assigned room_id through Django Channels, sending it through their respective WebSocket connections. After receiving the room ID, each user's React client will close its queue WebSocket, then open a new WebSocket for the assigned chatroom and redirect the user to the chat interface.
 
 users_in_matched_groups stores all users who will be sent the room ID.
+
+## Software Testing
+
+In this section, we will focus on unit and integration testing, using the PyTest library, as well as the model performance metric and the overall viability evaluation.
+
+### Unit Testing
+
+#### Evaluate Component 1: Build graph from likes evaluation
+
+(See: https://github.com/jumanlee/lyncupdjango/blob/master/tests/unit_tests/test_create_graph_annoy.py)
+
+The set of tests for create_graph_annoy is stored in test_create_graph_annoy.py, within
+the file there are two test functions: test_create_graph_from_likes() and test_create_node2vec_annoy().
+
+Here, we are testing with a small dummy dataset to see when the function converts the Like
+dataset into a graph, does the graph contain the correct values and structure. We also test if create_node2vec_annoy() can create the correct file types with the expected keys and structure in the correct folder.
+
+#### Evaluate Component 2: Queue Manager:
+
+(See: https://github.com/jumanlee/lyncupdjango/blob/master/tests/unit_tests/test_queue_manager.py)
+
+In test_queue_manager.py, we have tested each of the ClusterQueueManager’s functionalities.
+
+#### Evaluate Component 3 and 4 and the full run of the matching algorithm with small and full-scale data:
+
+(See: https://github.com/jumanlee/lyncupdjango/blob/master/tests/unit_tests/test_run_full_matching_algo.py)
+
+In test_run_full_matching_algo.py, we test the entire matching algorithm pipeline, using
+both a small dummy dataset and a large-scale dataset containing 1 million interactions
+among 10,000 simulated users. This allows us to evaluate the algorithm under normal
+conditions as well as perform stress testing to assess its performance under heavy load.
+Since this is unit testing, we use a mock Redis client instead of the actual Redis instance.
+The real Redis client will be tested separately during integration testing. Once the mock Redis is in place, we proceeded to testing match_in_cluster. Once it is certain that match_in_cluster works as expected, we proceeded to testing the full run_batch_matching() with a full-scale data of 1 million interactions along with the assumption that there are 3,000 users in the queue, waiting to be matched. This involves running create_node2vec_annoy(), queue_manager, match_in_cluster() during the cycle. A test of this size would typically take minutes to complete. This is due to the Node2Vec algorithm learning the structure of the sizeable graph and converting it into a fixed-dimensional vector.
+
+Next, we test if distribute_rooms can take the output of run_batch_matching() and return the
+correct data structure with each group of three or four. We first test distribute_rooms() with a
+small mock dataset in test_distribute_rooms_with_mock_and_small_data().
+
+Next, we proceeded to testing distribute_rooms() with a large-scale data, which assumes
+there are 3,000 users waiting in the queue, making use of the Annoy file we previously
+created in test_run_batch_matching_with_big_data(), which uses the dataset with 1 million.
+
+This test is implemented in test_distribute_rooms_with_mock_and_big_data() checks every
+group formed for correctness.
+
+### Integration Testing
+
+The next phase of testing is integration testing. While unit testing focuses on checking the
+functionality of individual components of the matching algorithm, integration testing
+ensures that all system components work together as expected. This involves testing the
+actual implementation of Django Channels, Redis, Celery, and other backend services for
+correctness.
+
+#### GroupConsumer testing
+
+(See: https://github.com/jumanlee/lyncupdjango/blob/master/tests/integration_tests/test_group_consumers.py)
+
+This test is implemented in test_group_consumers.py. In this test, we verify if
+GroupConsumer can support the the messaging between the three or four members in the
+chatroom correctly. The first test is to check whether GroupConsumer properly handles JWT
+authentication, ensuring that a connection can only be made with a valid token and is
+rejected if the token is invalid.
+
+Next, we test if a user can send and receive messages in a chatroom, then, we check if there are multiple users in the chatroom, and whether GroupConsumer can handle their communication.
+
+#### QueueConsumer testing
+
+(See https://github.com/jumanlee/lyncupdjango/blob/master/tests/integration_tests/test_queue_consumer.py)
+
+The QueueConsumer tests are implemented in test_queue_consumer.py. At this stage, we
+have tested whether a user can successfully establish a queue WebSocket connection with
+QueueConsumer when properly authenticated and added to the queue.
+
+### Unit and Integration Testing Results
+
+PyTest was run with all tests (unit tests and integration tests) passing successfully.
+
+![Test Results](readme_images/test-results.png)
+
+## Matching Algorithm Performance Evaluation
+
+(See: https://github.com/jumanlee/lyncupdjango/blob/master/tests/matching_algo_eval/matching_algo_eval.ipynb)
+
+We cannot directly evaluate our user-likes-user matching algorithm within LyncUp because LyncUp currently has no real user data. Instead, we use a public dataset of anime ratings [25] as a proxy to test whether our matching logic can yield real user similarity. In this dataset, any rating of 5 or more (out of 10) is treated as a “Like.”  We construct a bipartite graph where each user node connects to the movies they like with an edge weight of 1.0. Movies point back to users with a reverse edge weight of 0.5. This mirrors LyncUp’s planned graph structure, where a user liking another user would be the forward edge and a reverse edge would represent one-way interest. We then apply the exact same Node2Vec hyper-parameters and methodology that we use in LyncUp to learn user embeddings, which are used for the Annoy file which gives us three nearest most similar neighbour users.
+
+To evaluate how well the three nearest neighbours represent a user similarity, we conduct a Precision@1 test. First, we split each user's liked movies (those rated 5 or higher) into a training and a test set. We use only the training data to compute user embeddings with Node2Vec and find the three most similar neighbours for each user using Annoy. For each user, we then collect all the movies liked by those three neighbours and rank them by how many neighbours liked each one. We recommend the top-ranked movie to the user and then check if that movie appears in the user’s held-out test set. If it does, we count it as a correct prediction. This only happens if at least one neighbour also liked that same movie, because our recommendation pool is made up entirely from what the neighbours individually liked.
+
+After running this across all users, we find a Precision@1 of around 27%. This means that in 27% of cases, the user and at least one neighbour share a common liked movie.
+
+Although we are working with “user-likes-movie” rather than “user-likes-user,” the logic is nearly the same. In LyncUp, each edge will represent one user liking another user and finding the top three neighbours for a given user is similar to identifying three users who share many of the same “liked people.” This means that in the anime dataset proxy testing, a correct Precision@1 means the user and at least one neighbour liked the same recommended movie. 
+
+In LyncUp, this directly translates to the user and at least one matched user in the chatroom have previously liked another same person in other chat sessions (similar to having a mutual friend). So 27% Precision@1 infers that 27% of chatrooms are likely to contain at least one real shared like. We can therefore infer that when a user is placed into a chat session with three other people, there is a 27% chance that at least one of those three has previously liked the same person the user liked in a past session.
+
+## LyncUp's Viability
+
+Let’s work out the probability to illustrate LyncUp’s viability. We define:
+
+**P(shared like)** = probability that the user shares at least one mutual liked person with someone in the chatroom.
+
+Inferring from the proxy test result of Precision@K:
+**P(shared like in 1 session) = 0.27**
+
+Then:
+
+**P(no_shared_like in 1 session) = 1 - 0.27 = 0.73**
+**P(no_shared_like in 2 sessions) = 0.73 × 0.73 = 0.5329**
+
+Therefore: 
+
+**P(at least one shared_like in 2 sessions) = 1 - 0.5329 = 0.4671**
+
+This means that after two independent chat sessions, there is already a 46.71% chance that the user will have encountered at least one person who liked someone they also previously liked, representing similarity.
+
+This probability continues to increase with each new chat session. As time goes on and the user participates in more sessions, this probability compounds further. Over many chat sessions, these accumulate, increasing the chances that users will form meaningful connections. This could lead to users engaging in deeper conversations and even prompting a follow on each other on LinkedIn or continuing the relationship elsewhere. Since users can just repeatedly queue and match on LyncUp with no cost, this cumulative matching effect is a key strength of our algorithm and highlights how even a single shared liking history can act as social glue when repeated across sessions, proving the viability of LyncUp.
+
+## Possible Future Development
+
+### Video call integration
+
+LyncUp’s current chat feature is text-based only. However, adding optional video or audio calls could further enhance user experience. Enabling video chat, however, introduces higher bandwidth and lower latency requirements, which require careful load balancing and possibly even media server clusters to handle peak usage smoothly.
+
+### Expanded user profile
+
+LyncUp deliberately avoids forcing users to input detailed personal data, relying solely on “Liked” interactions for matchings. However, it could offer more optional fields to refine matches in a more subtle way. For instance, letting users optionally share attributes like time zone, industry, occupation might help to filter out truly incompatible matchings. This extra context could be used to match chat session when everyone is actually available or to unite users around at least some shared attributes while preserving both match diversity. 
+
+### Transitioning from CPU-based to GPU-Accelerated Node2Vec
+
+Currently, Node2Vec runs on CPU. If user numbers surge into the millions, generating or updating graph embeddings on CPU alone may become a problem. One solution is to migrate to GPU-accelerated libraries like cuGraph (part of NVDIA’s RAPIDS AI suite), which parallelises graph traversal and embedding computation. This upgrade could reduce training times substantially and keep the matching algorithm functioning under heavy loads. 
+
+### Potential use of AI-powered matching
+
+Although LyncUp’s existing approach already produces some results based on proxy testing, deeper AI-powdered methods could capture more hidden behavioural patterns. For example, advanced neural-based CF or large language models could detect more subtle user similarities. However, such implementations could mean higher computational costs.
+
+### Final Thoughts
+
+By pursuing these possible developments, LyncUp can evolve into an even more robust platform. Its current design successfully demonstrates that small group matchings, enabled by its matching algorithm, can produce non-trivial results based on our evaluation. With the continued improvements discussed, LyncUp can grow with its user base to deliver consistent and meaningful social experiences in the modern virtual workplace. 
+
+## References
+
+(1) Bollestad, V., Amland, J.S. and Olsen, E. (2022) ‘The pros and cons of remote work in relation
+to bullying, loneliness and work engagement: A representative study among Norwegian workers
+during COVID-19’, Frontiers in Psychology, 13. Available at: https://doi.org/10.3389/fpsyg.2022.1016368 (Accessed: 15 December 2024).
+
+(2) Bryan, B.T., Andrews, G., Thompson, K.N., Qualter, P., Matthews, T. and Arseneault, L. (2023)
+‘Loneliness in the workplace: A mixed-method systematic review and meta-analysis’, Occupational
+Medicine, 73(9), pp. 557–567. Available at: https://doi.org/10.1093/occmed/kqad138 (Accessed: 15
+December 2024).
+
+(3) Buffer (2023) State of Remote Work 2023. Available at: https://buffer.com/state-of-remote-work
+(Accessed: 15 December 2024).
+
+(4) Lane, J.N., Ganguli, I., Gaule, P., Guinan, E., and Lakhani, K.R. (2020). ‘Engineering serendipity: When does knowledge sharing lead to knowledge production?’ Strategic Management Journal, 42(6), 1215–1244. Available at: https://doi.org/10.1002/smj.3256 (Accessed: 15 December 2024).
+
+(5) Yang, L., Holtz, D., Jaffe, S., Suri, S., Sinha, S., Weston, J., Joyce, C., Shah, N., Sherman, K.,
+Hecht, B. and Teevan, J. (2021) ‘The effects of remote work on collaboration among information
+workers’, Nature Human Behaviour. Available at: https://www.nature.com/articles/s41562-021-01196-4 (Accessed: 15 December 2024).
+
+(6) Dyvik, E.H. (2024) Loneliness among employees working from home worldwide 2023. Statista.
+Available at: https://www.statista.com/statistics/1476817/global-employee-lineliness-wfh/
+(Accessed: 15 December 2024).
+
+(7) University of Oxford (2019) Happy workers are 13% more productive. Available at: https://www.ox.ac.uk/news/2019-10-24-happy-workers-are-13-more-productive (Accessed: 15 December
+2024).
+
+(8) Andersen, L.M.B., Reavley, N.J., Bøggild, H. and Overgaard, C. (2020) ‘How, for whom and
+under what circumstances do web-based platforms work to promote belonging and mental health? A
+realist evaluation of a web-based citizen-to-citizen platform’, Health & Social Care in theCommunity, 29(2), pp. 548–560. Available at: https://onlinelibrary.wiley.com/doi/10.1111/hsc.13222
+(Accessed: 15 December 2024).
+
+(9) Ang, C.S. (2020) ‘Attitude toward online relationship formation and psychological need
+satisfaction: The moderating role of loneliness’, Psychological Reports, 123(5), pp. 1887–1903.
+Available at: https://doi.org/10.1177/0033294119877820 (Accessed: 15 December 2024).
+
+(10) Liu, L. (2024) ‘Research on the relationship between virtual social interaction and the degree
+of loneliness based on algorithm matching technologies: A quantitative analysis on the SOUL APP-
+A virtual social software for strangers’, Plos One. Available at: https://doi.org/10.1371/journal.pone.0312522 (Accessed: 15 December 2024).
+
+(11) Swerbenski, K.L., Barnett, K.C., Devine, P.G. and Shutts, K. (2023) ‘Making “fast friends”
+online in middle childhood and early adolescence’, Social Development, 32(4), pp. 903–919. Available at: https://doi.org/10.1111/sode.12708 (Accessed: 15 December 2024).
+
+(12) Mesch, G.S. and Talmud, I. (2006) ‘Friendship formation, communication channels, and social
+closeness’, Social Networks, 28(1), pp. 1–25. Available at: https://www.semanticscholar.org/paper/Friendship-Formation-%2C-Communication-Channels-%2C-and-Mesch-Talmud/80d671a61a83b8c55968a61cca185f391c8b3f2e (Accessed: 15 December 2024).
+
+(13) Agarwal, V. and Bharadwaj, K.K. (2013) ‘A collaborative filtering framework for friends
+recommendation in social networks based on interaction intensity and adaptive user similarity’,
+Social Network Analysis and Mining, 3, pp. 359–379. Available at: https://link.springer.com/article/10.1007/s13278-012-0083-7 (Accessed: 15 December 2024).
+
+(14) Berkani, L. (2020) ‘A semantic and social-based collaborative recommendation of friends in
+social networks’, Software: Practice and Experience. Available at: https://doi.org/10.1002/spe.2828
+(Accessed: 15 December 2024).
+
+(15) Kung, P.P.-H., Fan, Z., Zhao, T., Liu, Y., Lai, Z., Shi, J., Wu, Y., Yu, J., Shah, N. and
+Venkataraman, G. (2024) ‘Improving embedding-based retrieval in friend recommendation with
+ANN query expansion’, SIGIR '24: Proceedings of the 47th International ACM SIGIR Conference
+on Research and Development in Information Retrieval, pp. 2930–2934. Available at: https://doi.org/10.1145/3626772.3661367 (Accessed: 15 December 2024).
+
+(16) Rathore, U., Kumar, Y. and Kumar, V. (2022) ‘A Potential Friend Recommendation System
+which deters the depression caused due to loneliness in online social networks’, IEEE Xplore.
+Available at: https://ieeexplore.ieee.org/document/9725620 (Accessed: 15 December 2024).
+
+(17) She, W.J., Dangisho, K., Siriaraya, P., Dollack, F. and Nakajima, S. (2023) ‘Matchmaking for
+Mental Well-being: Development of a peer-based support system (Peer2S) for students during
+COVID lockdown’, IUI '23 Companion: Companion Proceedings of the 28th International
+Conference on Intelligent User Interfaces, pp. 119–122. Available at: https://doi.org/10.1145/3581754.3584148 (Accessed: 15 December 2024).
+
+(18) Zhang, J., Huang, M. and Zhang, Y. (2017) ‘A Collaborative Filtering Recommendation
+Algorithm for Social Interaction’, IEEE Xplore. Available at: https://ieeexplore.ieee.org/document/8332624 (Accessed: 15 December 2024).
+
+(19) Real Python (2019) ‘Building a Recommendation Engine with Collaborative Filtering in
+Python’. Available at: https://realpython.com/build-recommendation-engine-collaborative-filtering/
+(Accessed: 15 December 2024).
+
+(20) Rose, J. (2024) ‘How to Use Spotify's Annoy Library in Python for Vector Similarity Search’,
+CheatSheet.MD, Available at: https://cheatsheet.md/vector-database/annoy-python-spotify.en
+(Accessed: 15 December 2024).
+
+(21) Slack Donut (n.d.), Slack Donut, Available at: www.donut.com (Accessed: 15 December
+2024).
+
+(22) Watercooler (n.d.), Watercooler, Available at: https://www.watercooler.fun/ (Accessed: 15
+December 2024).
+
+(23) Otten, N.V. (2024) ‘Node2Vec: Extensive Guide & How To Tutorial In Python’, Spot Intelligence, Available at: https://spotintelligence.com/2024/01/18/node2vec/#How_to_Implement_Node2Vec_in_Python_Example (Accessed: 9 February 2025).
+
+(24) Bratanic, T (2021) ‘Complete guide to understanding Node2Vec algorithm’, Medium, Available at: https://medium.com/towards-data-science/complete-guide-to-understanding-node2vec-algorithm-4e9a35e5d147 (Accessed: 9 February 2025).
+
+(25) Kaggle (n.d.) Anime Recommendations Database. Available at: https://www.kaggle.com/datasets/CooperUnion/anime-recommendations-database (Accessed: 30 March 2025).
+
+
+
