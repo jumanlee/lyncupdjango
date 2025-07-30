@@ -2,20 +2,30 @@
 
 **LyncUp** is a web app that uses machine learning to intelligently match remote workers into small-group chatrooms. It is designed to reduce social isolation among remote workers and foster meaningful, professional connections.
 
-When users feel ready to network, they simply join a queue. LyncUp then finds the best possible match from other users currently in the queue, placing them into a chatroom with 2–3 people who are predicted, based on past interactions and preferences, to align well with one another. 
+How it works: when users feel ready to network, they simply join a queue. LyncUp then finds the best possible match from other users currently in the queue, placing them into a chatroom with 2–3 people who are predicted, based on past interactions and preferences, to align well with one another. 
 
 As users continue to participate and privately “Like” those they enjoyed interacting with, the system refines its understanding of their preferences. Over time, this enables increasingly accurate and relevant matches, helping users build deeper, more valuable professional networks.
 
-## Frontend Repository 
+## Frontend Codebase 
 https://github.com/jumanlee/lyncupreact
 
-## Software Architecture
+## Table of Contents
+
+- [Software Architecture Overview](#software-architecture-overview)
+- [Database Design](#database-design)
+- [Features Overview](#lyncups-features-overview)
+- [Features Implementation](#lyncups-features-implementation)
+- [Matching Algorithm Implementation](#lyncups-features-implementation)
+- [Evaluation Results](#evaluation-results)
+- [Future Development](#future-development)
+- [Conclusion](#conclusion)
+
+## Software Architecture Overview
 
 ![Architecture Diagram](readme_images/architecture.png)
 
 As shown in the architecture diagram, LyncUp’s software architecture uses
-Django as the backend, React as the frontend, Redis with Django Channels to handle real-
-time features such as queuing and chatroom functionalities. Django Rest Framework (DRF)
+Django as the backend, React as the frontend, Redis with Django Channels to handle real-time features such as queuing and chatroom functionalities. Django Rest Framework (DRF)
 is used to provide endpoints for user registration, login, recording “Like” data and
 friendship management. User information are stored in a PostgresSQL database and is
 accessed via Django’s Object Relational Model (ORM). 
@@ -36,8 +46,8 @@ each user’s similarity to others based on their interactions.
 
 The ANN file allows the matching process to efficiently look up the top-k nearest
 neighbours for each waiting user. The system also enables multiple queue “clusters”,
-however, currently we only use a single cluster called “global” and a fallback “leftover”
-queue for random matching if required. This is because we currently do not have enough
+however, currently I only use a single cluster called “global” and a fallback “leftover”
+queue for random matching if required. This is because I currently do not have enough
 users in the system to support multi-cluster matching. Doing so would affect the matching
 quality.
 
@@ -54,3 +64,183 @@ between Django Channels (WebSockets management), Redis (for both queue storage a
 channel layers), Celery (to schedule and perform the matching tasks) and the Node2Vec-
 based representations that enables the matching algorithm.
 
+## Database Design
+![Database Diagram](readme_images/database.png)
+
+(See: https://github.com/jumanlee/lyncupdjango/blob/master/users/models.py)
+
+The AppUser model has a many-to-one relationship with the Organisation model, meaning
+many users can belong to one organisation. It also has a one-to-one relationship with the
+Profile model, where each user has exactly one profile and vice versa. The Like model acts
+as a bridging table to create a self-referential many-to-many relationship between AppUser
+instances. This means that each Like record links one user (user_from) to another (user_to)
+using two many-to-one foreign keys pointing to AppUser. This allows a user to like many
+others and be liked by many others, with additional fields like like_count and last_like_date
+stored in the Like model.
+
+## Lyncup's Features Overview
+
+Queue button UI:
+
+![Queue Button](readme_images/queue.png)
+
+Chatroom UI:
+
+![Queue Button](readme_images/chatroom.png)
+
+The user can update their individual profile, which is shown in a popup when their name is clicked on:
+
+![Profile Edit](readme_images/profile.png)
+
+To use LyncUp, users log in to the web app and enters a queue, while a match is being searched. Once a match is found, the users are redirected to a chatroom. The image above shows the chatroom interface of LyncUp. As an overview, LyncUp automatically aims to  match users who are likely to like each other, and place them into chatrooms. This allows users to socialise, with each chatroom hosting three or four users. The rationale behind a maximum of four users in each chatroom is that I aim to balance between social comfort and variety. 
+
+Often, large gatherings tend to intimidate quieter individuals and discourage meaningful interactions. One-on-one sessions on the other hand can feel too socially awkward, particularly when users meet virtually for the first time. By restricting each chatroom to a small group, LyncUp replicates those short, spontaneous discussions that might occur when colleagues gather for a coffee break. Next to each user, there is a “Like” button which allows the main user to click to indicate a positive impression. This “Like” data is then used for improving the system’s future matches. 
+
+The matching of users depends on how the backend logic computes user similarity. In this project I have chosen user-user collaborative filtering (CF) methodology which is typically used in recommendation systems such as movie recommendations or Instagram “you may know this person” feature. In many CF systems, users rate items such as movies or products on a scale of 1 to 5. 
+
+LyncUp’s approach to this is for the users themselves to become both the “raters” and the “items”. This allows the matching algorithm to capture each user’s preferences in the form of a “Like” system, where pressing a “thumbs-up” button on a user in a chatroom indicates positive impression.  For example, if user A and user B both liked the same group of users, then user A and B are deemed to be more similar and are thus more likely to like interacting with each other. This approach is inspired by real life in a sense that, if two people know the same group of people, then they may have something in common.
+
+It is important to point out that LyncUp’s approach does not simply re-match two users if one has “Liked” the other in the past. Instead, the system looks for overlaps in the group of people that each user has “Liked”. In other words, if user A and user B both repeatedly “Like” the same collection of other users, LyncUp infers a shared set of preferences or interests between A and B. As a result, the matching algorithm considers them more likely to enjoy interacting with each other, even if they have never directly “Liked” one another before. 
+
+This pattern-based similarity measure aims to increase the chance of discovering new but compatible social connections, rather than simply re-match users based on one-sided or mutual likes alone. Crucially, this also prevents the system from matching two people again and again just because they have both “Liked” each other in the past. 
+
+LyncUp uses a user-user content filtering methodology that relies on “Likes” data, rather than the traditional star ratings. Instead of rating items from 1 to 5, they select a binary thumbs-up or nothing at all.
+
+Technically speaking, LyncUp’s challenge is how computationally feasible this approach is. I initially considered the K-nearest neighbour algorithm to find out the top-k most similar users based on historical “Like” data to match users. However, as the user count grows, so does the computation time, rendering it unfeasible. This is the reason why the Approximate Nearest Neighbour (ANN) technique is chosen. Essentially, the ANN technique sacrifices a bit of accuracy for more efficiency in finding top-k similarities. Due to the large scale of possible users, in this project, I use the Annoy, which is an ANN library provided by Spotify.
+
+LyncUp converts its “Like” data, which are user interaction data collected from each chat session and stored in the PostgresSQL database, into a graph, using Node2Vec, a graph-embedding algorithm. [23][24]. This graph is then converted to a fixed-vector representation, which is then used as an input for ANN indexing. This processes generates an ANN file, which enables the system to find the top-k most similar users for matching.
+
+## LyncUp's Feature Implementation
+
+Users enter a queue and are dynamically matched before being automatically directed to a chatroom where they can engage in discussions. A key feature of the platform is the “Like” system, which allows users to indicate positive interactions with another user by pressing a thumbs-up button. These interactions are recorded and used to improve future matches, ensuring that users are more likely to be paired with other users that they have previously liked. Over time, this system learns to make better matches as increasing “Like” data become available. 
+
+### Django Models Overview
+(See: https://github.com/jumanlee/lyncupdjango/blob/master/users/models.py)
+
+The AppUser model is a custom user model that replaces Django’s default authentication system, allowing email-based login and optional affiliation with an Organisation. The Profile model adds to an AppUser’s core data by storing additional details such as age, personal description and affiliated organisation while keeping authentication information separate. This structure makes user management more secure and flexible.
+
+Crucially, the Like model records positive user-to-user interactions. Whenever one user “Likes” another user, the platform creates or updates a row that tracks their like_count. The interaction data stored in the Like model is what the matching algorithm uses to generate the Annoy index file, which is then used to efficiently identify and match similar users.
+
+The Organisation model represents companies that users can be affiliated with. These values are predefined by admins so that users can be accurately grouped under their respective organisations. This ensures consistent data entry, prevents duplicate or misspelled organisation names. Each AppUser can be linked to an Organisation through a foreign key, allowing grouping of users. The Organisation relationship is indirectly reflected in the user’s Profile as well, since each Profile is linked one-to-one with an AppUser, making it easy to obtain both organisational and personal information for each user.
+
+### LyncUp Workflow
+Next, we outline the workflow from the user’s initial interaction with the app. When a user accesses LyncUp, they are first presented with a login page. Upon successful authentication, they are directed to the main interface, where a "Queue" button is displayed.
+
+![Login](readme_images/login.png)
+
+![Queue Button](readme_images/queue.png)
+
+(See: https://github.com/jumanlee/lyncupdjango/blob/master/matching/consumers.py)
+
+When the user presses the “Queue” button, the React app sends a request to the Django app’s consumer to establish a WebSocket connection while they wait. In the Django app, users who initiate a queue WebSocket connection are recorded in Redis. Approximately every 30 seconds, as scheduled by Celery Beat, the matching algorithm retrieves the list of users currently in the queue from Redis and attempts to find suitable matches among them. The process ensures that users are dynamically grouped as soon as a match is available. The implementation of the Queue Consumer, responsible for handling WebSocket connections related to the queue, is detailed in the GitHub link above.
+
+(See: https://github.com/jumanlee/lyncupdjango/blob/master/matching/tasks.py)
+
+The matching algorithm is executed periodically (e.g. 30 seconds scheduled by Celery Beats), as shown in the link above, by Celery workers in tasks.py.
+
+Once groups of three to four users are successfully matched, the matching algorithm outputs the result in the following format:
+
+```python
+matched_groups = [{"room_id": 123, "user_ids": [1,2,3,4]}, {"room_id": 555, "user_ids": [5,6,7,8]}, …..]
+```
+
+(See: https://github.com/jumanlee/lyncupdjango/blob/master/chat/consumers.py)
+
+Each room ID from matched_groups is then sent to the respective users who are waiting in the queue. Upon receiving the room ID, the React app of each matched user initiates a new WebSocket connection to join the assigned chatroom. For example, if users A, B, and C are matched, each of their React apps receives the same room ID and uses it to establish a WebSocket connection for the chatroom. Once the WebSocket connection to the chatroom is established in Django, the users are automatically redirected to the same chat interface, allowing them to start their conversation. The opening of new WebSocket connection for a chatroom is handled by the GroupConsumer(chatroom) shown in the above link.
+
+On the React side, the matched users are dynamically directed to their respective chat interface:
+
+![Chatroom](readme_images/chatroom.png)
+
+Now that we have outlined the overall workflow, from users entering the queue to being matched and redirected to their assigned chat interfaces, we can now examine the most critical component of the project: the matching algorithm.
+
+## Matching Algorithm Implementation
+
+As shown above, this is executed in tasks.py periodically.
+
+The algorithm is made up of four components, we will go through them individually:
+
+### Component 1: Build graph from likes 
+
+(See: https://github.com/jumanlee/lyncupdjango/blob/master/matching/build_graph_annoy.py)
+
+This component takes in a dataset of user interactions from the Like model and uses it to generate an Annoy index file and a global_map.json file. The Annoy index file is used to efficiently search for users with similar interaction patterns based on their “like” behaviour. Annoy indexing is a more efficient adaptation of the K-nearest neighbour algorithm. 
+
+For context, here is an example of a dataset from the Like model:
+
+![Dataset](readme_images/data.png)
+
+First, the create_graph_from_likes(likes_df, reciprocal_weight=0.5) function uses the data queried from the Like model and builds a directed graph where each node represents a user and edges represent “Like” interactions. If user 1 has liked user 38, an edge is created from user 1 to user 38, with weight representing the number of likes. If there is no reciprocal like from 38 to 1, a weaker reverse edge is added with a reduced weight (e.g. *0.5). This ensures that one-sided likes have a weaker influence compared to mutual interactions. For context, we initially considered building a sparse matrix from the Like interaction dataset instead of this graph-based approach. However, because Annoy requires a dense matrix as an input, this would involve constructing an NxN matrix, where each row and column represents a user and the values indicate the strength of “Like” interactions between then, for example: 
+
+```python
+dense_like_data = [
+	[0, 5, 10, 0,…] #for user 0 (user 1: 5 likes, user 2: 10 likes)
+	[3, 0, 0, 8,…]
+	[3, 0, 0, 8, 0,…]
+	[3, 0, 0, 8, 0,…]…]
+```
+
+For a dataset with 1 million users, this would require storage and computation of 1 million x 1 million matrix, which would not be feasible. Hence the graph approach is chosen, instead. User interactions would instead be represented as follows:
+
+![Graph Nodes](readme_images/graphnodes.png)
+
+(See: https://github.com/jumanlee/lyncupdjango/blob/master/matching/build_graph_annoy.py)
+
+The graph-creating function is used within create_node2vec_annoy(). The main advantage of using a graph representation is that it allows us to generate graph embeddings, which are fixed-dimensional vector representations of nodes that capture the relationships in the graph. Using the Node2Vec library, we convert the graph into embeddings by simulating random walks. As we have a fixed number of dimensions with graph embeddings, this makes processing the “Like” interactions significantly cheaper computationally and memory-wise, compared to using a NxN dense matrix. 
+
+***In the graph embedding space, if, for example, user A and user B liked a similar set of users, their embeddings will be closer together in the vector space since they share similar interaction patterns. This represents the user-user content filtering section of the algorithm and sets the groundwork for constructing the Annoy index.***
+
+(Image from: https://www.youtube.com/watch?v=oDsbCoP_9Ac&t=248s)
+
+![Embedding Space](readme_images/embedding.png)
+
+In our implementation, the Node2Vec library algorithm [23][24] learns the structural relationship between all nodes and represents them in a fixed-dimensional embedding space. It does this by running random walks on the graph and training a skip-gram model to capture the similarities between the nodes. We set the p and q parameters to 1.0, which results in an unbiased random walk (effectively DeepWalk). This means that the algorithm does not favour either a breath-first or depth-first search, making it unbiased when exploring the node relationships. However, these parameters can be altered later if the evaluation results indicate that a different walk strategy would represent better. We use 128 dimensions for create_node2vec_annoy(). 
+
+create_node2vec_annoy() then outputs an Annoy file, which allows the matching algorithm to efficiently retrieve the top-k most similar users based on their like interactions. Instead of using direct user IDs, Annoy operates on integer-based indices, this means we need the global_map.json file (another output file), which stores the a dictionary for looking up Annoy user indices with user IDs.  
+
+(See: https://github.com/jumanlee/lyncupdjango/blob/master/matching/tasks.py)
+
+As this function is still computationally expensive, it is executed periodically by Celery workers (e.g. every 24 hours), as scheduled by Celery Beats. The likes_df comes from the Like model.
+
+### Component 2: Queue Manager
+
+(See: https://github.com/jumanlee/lyncupdjango/blob/master/matching/queue_manager.py)
+
+To process users waiting in the queue with the matching algorithm, we use the queue manager.
+
+ClusterQueueManager supports multiple clusters to accommodate potential future use cases where users may be segmented into different groups for more separated matchings, for example, grouping by country, interests or industries, to ensure they are matched with others within the same category. However, at this stage, segmentation would weaken matching quality due to low user numbers. Hence, for now, all users are placed in a single “global” cluster. The leftover cluster acts as a fallback for users who cannot be matched with the “global” Annoy index. These users are matched randomly instead in the leftover cluster.
+
+### Component 3: Matching
+
+(See: https://github.com/jumanlee/lyncupdjango/blob/master/matching/matching.py)
+
+Once the Annoy index file and queue manager are in place, we can start matching the users. We first match users in each individual cluster. However, in this case, as mentioned, it will just involve the “global” cluster, and then “leftover” cluster. We first look at match_in_cluster, which takes in the queue_manager, which is used to collect all users waiting in the Redis queue to be matched, as a parameter. The individual cluster needs to be specified (e.g. “global” or “leftover”). 
+
+match_in_cluster() is then used in run_batch_matching() to match each cluster individually (see below code). In our case for now, as mentioned, these clusters will be “global” and “leftover”. run_batch_matching will then output a Python Dict showing which users in each cluster have been grouped together in three or four. 
+For example: 
+```python
+{“global”: [[1,2,3,4], [5,6,7,8]], “leftover”: [[9,10,11], [12,13,14,15]]}. 
+```
+
+Each group, e.g. [1,2,3,4], will be placed in their respective allocated chatrooms later.
+
+### Component 4: Distribute Chatrooms
+
+(See: https://github.com/jumanlee/lyncupdjango/blob/master/matching/distribute_rooms.py)
+
+Now that we have in place run_batch_matching(), which outputs, for example: 
+```python
+{“global”: [[1,2,3,4], [5,6,7,8]], “leftover”: [[9,10,11], [12,13,14,15]]}
+```
+I need to assign a chatroom for each group. This is handled by distribute_rooms(). 
+
+The distribute_rooms() function takes in grouped_users as a parameter, which is the output of run_batch_matching(). It also requires the Redis client to track which room IDs are currently in use, so that only available room IDs are assigned. This prevents assigning duplicate room IDs to different groups.
+
+The function then outputs a tuple containing matched_groups and users_in_matched_groups. Each room_id is assigned randomly. An example of matched_groups is: 
+```python
+{“room_id”: 115, “user_ids”: [1,2,3,4], “room_id”: 222, “user_ids”: [5,6,7,8]}
+```
+
+Once rooms are assigned, Celery workers pass each user's assigned room_id through Django Channels, sending it through their respective WebSocket connections. After receiving the room ID, each user's React client will close its queue WebSocket, then open a new WebSocket for the assigned chatroom and redirect the user to the chat interface.
+
+users_in_matched_groups stores all users who will be sent the room ID.
