@@ -367,7 +367,7 @@ This probability continues to increase with each new chat session. As time goes 
 
 The geometric compounding above treats each chat session as an independent Bernoulli trial. That approximation only holds if:
 
-1. The waiting-room population is large relative to the room size
+1. The queue population is large relative to the room size
 2. The matching avoids re-matching the same pair of users in consecutive sessions. 
 
 I am keeping the compounded figure purely as an intuition pump, it is not a hard guarantee.
