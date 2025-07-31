@@ -32,7 +32,7 @@ https://github.com/jumanlee/lyncupreact
 As shown in the architecture diagram, LyncUp’s software architecture uses
 Django as the backend, React as the frontend, Redis with Django Channels to handle real-time features such as queuing and chatroom functionalities. Django Rest Framework (DRF)
 is used to provide endpoints for user registration, login, recording “Like” data and
-friendship management. User information are stored in a PostgresSQL database and is
+friendship management. User information is stored in a PostgresSQL database and is
 accessed via Django’s Object Relational Model (ORM). 
 
 On the frontend side, React
@@ -110,7 +110,7 @@ LyncUp uses a user-user content filtering methodology that relies on “Likes”
 
 Technically speaking, LyncUp’s challenge is how computationally feasible this approach is. I initially considered the K-nearest neighbour algorithm to find out the top-k most similar users based on historical “Like” data to match users. However, as the user count grows, so does the computation time, rendering it unfeasible. This is the reason why the Approximate Nearest Neighbour (ANN) technique is chosen. Essentially, the ANN technique sacrifices a bit of accuracy for more efficiency in finding top-k similarities. Due to the large scale of possible users, in this project, I use the Annoy, which is an ANN library provided by Spotify.
 
-LyncUp converts its “Like” data, which are user interaction data collected from each chat session and stored in the PostgresSQL database, into a graph, using Node2Vec, a graph-embedding algorithm. [23][24]. This graph is then converted to a fixed-vector representation, which is then used as an input for ANN indexing. This processes generates an ANN file, which enables the system to find the top-k most similar users for matching.
+LyncUp converts its “Like” data, which are user interaction data collected from each chat session and stored in the PostgresSQL database, into a graph, using Node2Vec, a graph-embedding algorithm. [23][24]. This graph is then converted to a fixed-vector representation, which is then used as an input for ANN indexing. This process generates an ANN file, which enables the system to find the top-k most similar users for matching.
 
 ## Features Implementation
 
@@ -262,7 +262,7 @@ In this section, I will focus on unit and integration testing, using the PyTest 
 The set of tests for create_graph_annoy is stored in test_create_graph_annoy.py, within
 the file there are two test functions: test_create_graph_from_likes() and test_create_node2vec_annoy().
 
-Here, I are testing with a small dummy dataset to see when the function converts the Like
+Here, I am testing with a small dummy dataset to see when the function converts the Like
 dataset into a graph, does the graph contain the correct values and structure. I also test if create_node2vec_annoy() can create the correct file types with the expected keys and structure in the correct folder.
 
 #### Evaluate Component 2: Queue Manager:
@@ -337,7 +337,7 @@ To evaluate how well the three nearest neighbours represent a user similarity, I
 
 After running this across all users, I find a Precision@1 of around 27%. This means that in 27% of cases, the user and at least one neighbour share a common liked movie.
 
-Although I are working with “user-likes-movie” rather than “user-likes-user,” the logic is nearly the same. In LyncUp, each edge will represent one user liking another user and finding the top three neighbours for a given user is similar to identifying three users who share many of the same “liked people.” This means that in the anime dataset proxy testing, a correct Precision@1 means the user and at least one neighbour liked the same recommended movie. 
+Although I am working with “user-likes-movie” rather than “user-likes-user,” the logic is nearly the same. In LyncUp, each edge will represent one user liking another user and finding the top three neighbours for a given user is similar to identifying three users who share many of the same “liked people.” This means that in the anime dataset proxy testing, a correct Precision@1 means the user and at least one neighbour liked the same recommended movie. 
 
 In LyncUp, this directly translates to the user and at least one matched user in the chatroom have previously liked another same person in other chat sessions (similar to having a mutual friend). So 27% Precision@1 infers that 27% of chatrooms are likely to contain at least one real shared like. I can therefore infer that when a user is placed into a chat session with three other people, there is a 27% chance that at least one of those three has previously liked the same person the user liked in a past session.
 
