@@ -374,6 +374,10 @@ I am keeping the compounded figure purely as an intuition pump, it is not a hard
 
 ## Possible Future Development
 
+### Improving the matching algorithm's performance
+
+As soon as LyncUp has a large enough real-user base, the 27 % proxy figure can be replaced with live measurements. Those data will let us fine tune the Node2Vec hyperparameters, adjust Annoy index settings, and, if needed, swap in better techniques to improve the matching algorithm's precision rate. Even modest gains in the precision rate will compound across successive matches, making the overall user-experience lift disproportionately large.
+
 ### Video call integration
 
 LyncUp’s current chat feature is text-based only. However, adding optional video or audio calls could further enhance user experience. Enabling video chat, however, introduces higher bandwidth and lower latency requirements, which require careful load balancing and possibly even media server clusters to handle peak usage smoothly.
