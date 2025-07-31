@@ -363,6 +363,15 @@ This means that after two independent chat sessions, there is already a 46.71% c
 
 This probability continues to increase with each new chat session. As time goes on and the user participates in more sessions, this probability compounds further. Over many chat sessions, these accumulate, increasing the chances that users will form meaningful connections. This could lead to users engaging in deeper conversations and even prompting a follow on each other on LinkedIn or continuing the relationship elsewhere. Since users can just repeatedly queue and match on LyncUp with no cost, this cumulative matching effect is a key strength of our algorithm and highlights how even a single shared liking history can act as social glue when repeated across sessions, proving the viability of LyncUp.
 
+### Independence assumption 
+
+The geometric compounding above treats each chat session as an independent Bernoulli trial. That approximation only holds if:
+
+1. The waiting-room population is large relative to the room size
+2. The matching avoids re-matching the same pair of users in consecutive sessions. 
+
+I am keeping the compounded figure purely as an intuition pump, it is not a hard guarantee.
+
 ## Possible Future Development
 
 ### Video call integration
