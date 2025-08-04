@@ -30,12 +30,12 @@ SECRET_KEY = config('SECRET_KEY')
 # DEBUG = True
 DEBUG = False
 
-#commented out localhost
+# # commented out localhost
 # ALLOWED_HOSTS = ["localhost", "127.0.0.1", "0.0.0.0", "django", config("DJANGO_URL")]
 
 ALLOWED_HOSTS = ["127.0.0.1", "0.0.0.0", "django", config("DJANGO_URL")]
 
-#commented out localhost
+# # commented out localhost
 # CORS_ALLOWED_ORIGINS = ['http://localhost:5173', f"https://{config('FRONTEND_URL')}", f"https://www.{config('FRONTEND_URL')}"]
 
 CORS_ALLOWED_ORIGINS = [f"https://{config('FRONTEND_URL')}", f"https://www.{config('FRONTEND_URL')}"]
