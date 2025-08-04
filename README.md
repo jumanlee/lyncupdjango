@@ -22,6 +22,7 @@ https://github.com/jumanlee/lyncupreact
 - [Matching Algorithm Performance Evaluation](#matching-algorithm-performance-evaluation)
 - [LyncUp's Viability](#lyncups-viability)
 - [Possible Future Development](#possible-future-development)
+- [Contact Me](#contact-me)
 - [References](#references)
 
 
@@ -397,6 +398,10 @@ Although LyncUp’s existing approach already produces some results based on pro
 ### Final Thoughts
 
 By pursuing these possible developments, LyncUp can evolve into an even more robust platform. Its current design successfully demonstrates that small group matchings, enabled by its matching algorithm, can produce non-trivial results based on our evaluation. With the continued improvements discussed, LyncUp can grow with its user base to deliver consistent and meaningful social experiences in the modern virtual workplace. 
+
+### Contact Me
+
+For feedback, collaboration or job opportunities, feel free to contact me on [LinkedIn](https://www.linkedin.com/in/nujlee).
 
 ## References
 
