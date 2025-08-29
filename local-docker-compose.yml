@@ -10,14 +10,18 @@ services:
     ports:
       - "8080:8080"
     depends_on:
-      - postgres
-      - redis
-      - migrate  #ensure migrations run first
+      migrate:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     env_file:
       - .env
 
     #can uncomment since we have .env file above
     environment:
+      DJANGO_SETTINGS_MODULE: lyncup.settings.dev
       DB_NAME: ${DB_NAME}
       DB_USER: ${DB_USER}
       DB_PASSWORD: ${DB_PASSWORD}
@@ -58,10 +62,12 @@ services:
     #     echo "No fixture or data already loaded")
     #   '
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
     env_file:
       - .env
     environment:
+      DJANGO_SETTINGS_MODULE: lyncup.settings.dev
       DB_HOST: postgres
       DB_PORT: ${DB_PORT}
       REDIS_HOST: redis
@@ -105,10 +111,14 @@ services:
     volumes:
       - .:/usr/src/app
     depends_on:
-      - django
-      - redis
-      - postgres
+      django:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     environment:
+      DJANGO_SETTINGS_MODULE: lyncup.settings.dev
       DB_NAME: ${DB_NAME}
       DB_USER: ${DB_USER}
       DB_PASSWORD: ${DB_PASSWORD}
@@ -127,10 +137,14 @@ services:
     volumes:
       - .:/usr/src/app
     depends_on:
-      - django
-      - redis
-      - postgres
+      django:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     environment:
+      DJANGO_SETTINGS_MODULE: lyncup.settings.dev
       DB_NAME: ${DB_NAME}
       DB_USER: ${DB_USER}
       DB_PASSWORD: ${DB_PASSWORD}
