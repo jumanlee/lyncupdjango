@@ -56,8 +56,8 @@ CHANNEL_LAYERS = {
 CELERY_BROKER_URL = REDIS_URL
 CELERY_RESULT_BACKEND = REDIS_URL
 
-#can swap for below for local testing and Django will just print the email body to the terminal:
-EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+# #can swap for below for local testing and Django will just print the email body to the terminal:
+# EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 
 #base URL where React frontend handles email verification
 #It forms the beginning of the link the user clicks to confirm their email, like this:

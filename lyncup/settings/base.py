@@ -99,6 +99,10 @@ REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
+    "DEFAULT_THROTTLE_CLASSES": [
+        "rest_framework.throttling.AnonRateThrottle",
+        "rest_framework.throttling.UserRateThrottle",
+    ],
     'DEFAULT_THROTTLE_RATES': {
         'anon': '5/minute',
         'user': '1000/day', 
@@ -285,18 +289,6 @@ EMAIL_USE_TLS = config("EMAIL_USE_TLS", default=True, cast=bool)
 
 #for admin panel, stripping accidental trailing slash and adding a trailing slash
 ADMIN_URL = config("ADMIN_URL", default="admin").strip("/") + "/"
-
-#base URL where React frontend handles email verification
-#It forms the beginning of the link the user clicks to confirm their email, like this:
-#http://localhost:5173/verify-email/<uidb64>/<token>
-# FRONTEND_VERIFY_URL = "http://localhost:5173/verify-email"  
-# BACKEND_VERIFY_URL = "http://localhost:8080/api/users/verify-email"
-BACKEND_VERIFY_URL = f"https://{config('DJANGO_URL')}/api/users/verify-email"
-FRONTEND_VERIFY_SUCCESS_URL = f"https://{config('FRONTEND_URL')}/verify-success"
-FRONTEND_VERIFY_FAIL_URL = f"https://{config('FRONTEND_URL')}/verify-fail"
-
-FRONTEND_RESET_PASSWORD_URL = f"https://{config('FRONTEND_URL')}/reset-password"
-FRONTEND_RESET_PASSWORD_FAIL_URL = f"https://{config('FRONTEND_URL')}/reset-password-fail"
 
 
 #for logging (for enabling logging during development)

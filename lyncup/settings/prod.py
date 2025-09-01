@@ -53,6 +53,18 @@ CHANNEL_LAYERS = {
 CELERY_BROKER_URL = REDIS_URL
 CELERY_RESULT_BACKEND = REDIS_URL
 
+#base URL where React frontend handles email verification
+#It forms the beginning of the link the user clicks to confirm their email, like this:
+#http://localhost:5173/verify-email/<uidb64>/<token>
+# FRONTEND_VERIFY_URL = "http://localhost:5173/verify-email"  
+# BACKEND_VERIFY_URL = "http://localhost:8080/api/users/verify-email"
+BACKEND_VERIFY_URL = f"https://{config('DJANGO_URL')}/api/users/verify-email"
+FRONTEND_VERIFY_SUCCESS_URL = f"https://{config('FRONTEND_URL')}/verify-success"
+FRONTEND_VERIFY_FAIL_URL = f"https://{config('FRONTEND_URL')}/verify-fail"
+
+FRONTEND_RESET_PASSWORD_URL = f"https://{config('FRONTEND_URL')}/reset-password"
+FRONTEND_RESET_PASSWORD_FAIL_URL = f"https://{config('FRONTEND_URL')}/reset-password-fail"
+
 
 #What below does:
 # Tells Django/WhiteNoise to serve static files (CSS, JS, images) in a production-safe way.
