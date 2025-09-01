@@ -46,6 +46,7 @@ services:
 
     #can uncomment since we have .env file above
     environment:
+      DJANGO_SETTINGS_MODULE: lyncup.settings.prod
       DB_NAME: ${DB_NAME}
       DB_USER: ${DB_USER}
       DB_PASSWORD: ${DB_PASSWORD}
@@ -111,6 +112,7 @@ services:
     env_file:
       - .env
     environment:
+      DJANGO_SETTINGS_MODULE: lyncup.settings.prod
       DB_HOST: postgres
       DB_PORT: ${DB_PORT}
 
@@ -188,6 +190,7 @@ services:
         condition: service_healthy
 
     environment:
+      DJANGO_SETTINGS_MODULE: lyncup.settings.prod
       DB_NAME: ${DB_NAME}
       DB_USER: ${DB_USER}
       DB_PASSWORD: ${DB_PASSWORD}
@@ -229,6 +232,7 @@ services:
       redis:
         condition: service_healthy
     environment:
+      DJANGO_SETTINGS_MODULE: lyncup.settings.prod
       DB_NAME: ${DB_NAME}
       DB_USER: ${DB_USER}
       DB_PASSWORD: ${DB_PASSWORD}
